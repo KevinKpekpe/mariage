@@ -49,10 +49,10 @@
                 <div class="announcement-card">
                     <div class="announcement-photos">
                         <div class="photo-container">
-                            <img src="person1.jpg" alt="Photo de Personne 1">
+                            <img src="./images/person1.jpg" alt="Photo de Personne 1">
                         </div>
                         <div class="photo-container">
-                            <img src="person2.jpg" alt="Photo de Personne 2">
+                            <img src="./images/person2.jpg" alt="Photo de Personne 2">
                         </div>
                     </div>
                     <div class="announcement-date">15/05/2025</div>
@@ -69,10 +69,10 @@
                 <div class="announcement-card">
                     <div class="announcement-photos">
                         <div class="photo-container">
-                            <img src="person1.jpg" alt="Photo de Personne 3">
+                            <img src="./images/person1.jpg" alt="Photo de Personne 1">
                         </div>
                         <div class="photo-container">
-                            <img src="person2.jpg" alt="Photo de Personne 4">
+                            <img src="./images/person2.jpg" alt="Photo de Personne 2">
                         </div>
                     </div>
                     <div class="announcement-date">22/05/2025</div>
@@ -88,12 +88,12 @@
 
                 <div class="announcement-card">
                     <div class="announcement-photos">
-                        <div class="photo-container">
-                            <img src="person1.jpg" alt="Photo de Personne 5">
+                    <div class="photo-container">
+                            <img src="./images/person1.jpg" alt="Photo de Personne 1">
                         </div>
                         <div class="photo-container">
-                            <img src="person2.jpg" alt="Photo de Personne 6">
-                        </div>
+                            <img src="./images/person2.jpg" alt="Photo de Personne 2">
+                        </div>  
                     </div>
                     <div class="announcement-date">28/05/2025</div>
                     <div class="announcement-details">
