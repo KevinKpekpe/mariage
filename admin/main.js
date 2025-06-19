@@ -12,36 +12,42 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// Gestion de la recherche
-document.querySelector('.search-input').addEventListener('input', function (e) {
-    const searchTerm = e.target.value.toLowerCase();
-    if (searchTerm.length > 2) {
-        console.log('Recherche:', searchTerm);
-        // Ici vous pouvez implémenter la logique de recherche
+document.getElementById('photoInput').addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Validate file size (2MB max)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('La taille du fichier ne doit pas dépasser 2MB.');
+            return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Veuillez sélectionner un fichier image valide.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const placeholder = document.getElementById('photoPlaceholder');
+            placeholder.innerHTML = `<img src="${e.target.result}" alt="Photo">`;
+            placeholder.classList.add('has-image');
+            document.getElementById('photoActions').style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
     }
 });
 
-// Gestion du menu mobile
-function toggleSidebar() {
-    document.querySelector('.sidebar').classList.toggle('open');
-}
-
-// Ajout d'un bouton menu mobile si nécessaire
-if (window.innerWidth <= 768) {
-    const mobileMenuBtn = document.createElement('button');
-    mobileMenuBtn.innerHTML = '☰';
-    mobileMenuBtn.style.cssText = `
-                position: fixed;
-                top: 15px;
-                left: 15px;
-                z-index: 1001;
-                background: #1976d2;
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 5px;
-                cursor: pointer;
+function removePhoto() {
+    const placeholder = document.getElementById('photoPlaceholder');
+    placeholder.innerHTML = `
+                <div>
+                    📷<br>
+                    Cliquez pour ajouter<br>
+                    une photo
+                </div>
             `;
-    mobileMenuBtn.onclick = toggleSidebar;
-    document.body.appendChild(mobileMenuBtn);
+    placeholder.classList.remove('has-image');
+    document.getElementById('photoInput').value = '';
+    document.getElementById('photoActions').style.display = 'none';
 }
