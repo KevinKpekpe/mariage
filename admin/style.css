@@ -265,83 +265,9 @@
             font-weight: 500;
         }
 
-        .activities-list {
-            padding: 0;
-        }
 
-        .activity-item {
-            padding: 15px 25px;
-            border-bottom: 1px solid #f0f0f0;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
 
-        .activity-item:last-child {
-            border-bottom: none;
-        }
 
-        .activity-icon {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 14px;
-        }
-
-        .activity-content {
-            flex: 1;
-        }
-
-        .activity-title {
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 3px;
-        }
-
-        .activity-time {
-            font-size: 12px;
-            color: #666;
-        }
-
-        /* Quick Actions */
-        .quick-actions {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .quick-action-btn {
-            padding: 12px 20px;
-            background: #1976d2;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .quick-action-btn:hover {
-            background: #1565c0;
-            transform: translateY(-2px);
-        }
-
-        .quick-action-btn.secondary {
-            background: #10b981;
-        }
-
-        .quick-action-btn.secondary:hover {
-            background: #059669;
-        }
 
         /* Responsive */
         @media (max-width: 768px) {
