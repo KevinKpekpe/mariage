@@ -1033,7 +1033,23 @@ body {
     border-top: 1px solid #e5e5e5;
     margin-top: 30px;
 }
+.logout-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #1976d2;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
 
+.logout-button:hover {
+    background: #1565c0;
+}
 /* Success/Error Messages */
 .message {
     padding: 15px 20px;

@@ -1,6 +1,26 @@
+<?php
+require_once '../db.php';
+require_once '../functions.php';
+
+// Check if user is logged in
+if (!isLoggedIn()) {
+    header('Location: login.php');
+    exit;
+}
+
+// Get user data from session
+$prenom = $_SESSION['prenom'];
+$nom = $_SESSION['nom'];
+$role = $_SESSION['role'];
+
+// Determine user initials for avatar
+$user_initials = strtoupper(substr($prenom, 0, 1) . substr($nom, 0, 1));
+
+// Determine role display text
+$role_display = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
+?>
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +44,7 @@
         <nav class="sidebar-nav">
             <div class="nav-section">
                 <div class="nav-section-title">Menu Principal</div>
-                <a href="#" class="nav-item active">
+                <a href="dashboard.php" class="nav-item active">
                     <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
                     Dashboard
                 </a>
@@ -36,10 +56,12 @@
                     <span class="nav-icon"><i class="fas fa-users"></i></span>
                     Personnes
                 </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-user-tie"></i></span>
-                    Officiers
-                </a>
+                <?php if (hasRole('admin')): ?>
+                    <a href="#" class="nav-item">
+                        <span class="nav-icon"><i class="fas fa-user-tie"></i></span>
+                        Officiers
+                    </a>
+                <?php endif; ?>
             </div>
 
             <div class="nav-section">
@@ -71,9 +93,12 @@
                     <span class="search-icon"><i class="fas fa-search"></i></span>
                 </div>
                 <div class="user-profile">
-                    <div class="user-avatar">OC</div>
-                    <span>Officier Civil</span>
+                    <div class="user-avatar"><?php echo htmlspecialchars($user_initials); ?></div>
+                    <span><?php echo htmlspecialchars($prenom . ' ' . $nom); ?> (<?php echo htmlspecialchars($role_display); ?>)</span>
                 </div>
+                <a href="logout.php" class="logout-button">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
             </div>
         </header>
 
@@ -133,5 +158,4 @@
     </div>
     <script src="main.js"></script>
 </body>
-
 </html>
