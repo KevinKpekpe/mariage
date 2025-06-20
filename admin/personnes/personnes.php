@@ -1,224 +1,201 @@
-<!DOCTYPE html>
-<html lang="fr">
+<?php
+require_once __DIR__ . '/../header.php';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <title>Registre Mariages Civils - Personnes</title>
-    <link rel="stylesheet" href="/admin/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-</head>
+// Récupération des filtres
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$per_page = 5;
+$offset = ($page - 1) * $per_page;
 
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-diamond"></div>
-                <div class="logo-text">Mariage</div>
+// Récupération des personnes
+$result = getAllPersons($pdo, $search, $per_page, $offset);
+$persons = $result['data'];
+$total_count = $result['total_count'];
+$total_pages = ceil($total_count / $per_page);
+
+
+
+?>
+<!-- Page Content -->
+<div class="page-content">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-title-icon"><i class="fas fa-users"></i></div>
+            <h1>Liste des Personnes</h1>
+        </div>
+        <a href="/admin/personnes/ajout_personne.php" class="add-person-btn">
+            <span><i class="fas fa-plus"></i></span>
+            Ajouter une Personne
+        </a>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <form method="GET" class="filters-form">
+            <div class="filters-row">
+                <div class="filter-group search-filter">
+                    <label class="filter-label">Rechercher</label>
+                    <div class="search-box">
+                        <input type="text" class="search-input" placeholder="Nom, prénom, profession..." 
+                            name="search" value="<?php echo htmlspecialchars($search); ?>">
+                        <span class="search-icon"><i class="fas fa-search"></i></span>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-section">
+        <div class="table-header">
+            <h2 class="table-title">Personnes Enregistrées</h2>
+            <div class="table-count">
+                <?php echo number_format($total_count, 0, ',', ' '); ?> personne<?php echo $total_count > 1 ? 's' : ''; ?>
+                <?php if ($search || $type_filter || $nationality_filter): ?>
+                    (<?php echo count($persons); ?> affichée<?php echo count($persons) > 1 ? 's' : ''; ?>)
+                <?php endif; ?>
             </div>
         </div>
 
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Menu Principal</div>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-                    Dashboard
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-heart"></i></span>
-                    Mariages
-                </a>
-                <a href="#" class="nav-item active">
-                    <span class="nav-icon"><i class="fas fa-users"></i></span>
-                    Personnes
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-user-tie"></i></span>
-                    Officiers
-                </a>
+        <?php if (!$result['success']): ?>
+            <div class="error-message">
+                <p><?php echo htmlspecialchars($result['error']); ?></p>
             </div>
+        <?php elseif (empty($persons)): ?>
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fas fa-users"></i></div>
+                <h3>Aucune personne trouvée</h3>
+                <?php if ($search || $type_filter || $nationality_filter): ?>
+                    <p>Aucune personne ne correspond aux critères de recherche.</p>
+                    <a href="?" class="btn btn-outline">Voir toutes les personnes</a>
+                <?php else: ?>
+                    <p>Aucune personne n'est encore enregistrée dans le système.</p>
+                    <a href="/admin/personnes/ajout_personne.php" class="btn btn-primary">Ajouter la première personne</a>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <table class="persons-table">
+                <thead>
+                    <tr>
+                        <th>Photo</th>
+                        <th>Nom & Prénom</th>
+                        <th>Type</th>
+                        <th>Date de Naissance</th>
+                        <th>Lieu de Naissance</th>
+                        <th>Nationalité</th>
+                        <th>Profession</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($persons as $person): ?>
+                        <tr>
+                            <td>
+                                <?php 
+                                $photo_path = getPersonPhoto($person['photo']);
+                                if ($photo_path): 
+                                ?>
+                                    <div class="person-photo">
+                                        <img src="<?php echo htmlspecialchars($photo_path); ?>" 
+                                            alt="Photo de <?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?>">
+                                    </div>
+                                <?php else: ?>
+                                    <div class="person-photo placeholder">
+                                        <?php echo getPersonInitials($person['nom'], $person['prenom']); ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div class="person-name">
+                                    <?php echo htmlspecialchars(strtoupper($person['nom']) . ' ' . ucfirst($person['prenom'])); ?>
+                                </div>
+                                <div class="person-details">
+                                    ID: <?php echo str_pad($person['id_personne'], 5, '0', STR_PAD_LEFT); ?>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="person-type-badge <?php echo $person['type_personne']; ?>">
+                                    <?php echo ucfirst($person['type_personne']); ?>
+                                </span>
+                            </td>
+                            <td><?php echo formatDate($person['date_naissance']); ?></td>
+                            <td><?php echo htmlspecialchars($person['lieu_naissance'] ?: '-'); ?></td>
+                            <td><?php echo htmlspecialchars($person['nationalite']); ?></td>
+                            <td><?php echo htmlspecialchars($person['profession'] ?: '-'); ?></td>
+                            <td>
+                                <div class="actions-cell">
+                                    <button class="action-btn view" title="Voir les détails" 
+                                            onclick="viewPerson(<?php echo $person['id_personne']; ?>)">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="action-btn edit" title="Modifier" 
+                                            onclick="editPerson(<?php echo $person['id_personne']; ?>)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="action-btn delete" title="Supprimer" 
+                                            onclick="deletePerson(<?php echo $person['id_personne']; ?>, '<?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?>')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
 
-            <div class="nav-section">
-                <div class="nav-section-title">Gestion</div>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-city"></i></span>
-                    Communes
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-handshake"></i></span>
-                    Parents
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-file-signature"></i></span>
-                    Témoins
-                </a>
-            </div>
-        </nav>
+            <!-- Pagination -->
+            <?php if ($total_pages > 1): ?>
+                <div class="pagination">
+                    <div class="pagination-info">
+                        Page <?php echo $page; ?> sur <?php echo $total_pages; ?>
+                        (<?php echo (($page - 1) * $per_page) + 1; ?>-<?php echo min($page * $per_page, $total_count); ?> sur <?php echo $total_count; ?>)
+                    </div>
+                    <div class="pagination-controls">
+                        <?php if ($page > 1): ?>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => 1])); ?>" class="pagination-btn">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page - 1])); ?>" class="pagination-btn">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        <?php endif; ?>
+                        
+                        <?php 
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+                        
+                        for ($i = $start_page; $i <= $end_page; $i++): 
+                        ?>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>" 
+                            class="pagination-btn <?php echo $i === $page ? 'active' : ''; ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>" class="pagination-btn">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $total_pages])); ?>" class="pagination-btn">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
     </div>
+</div>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Header -->
-        <header class="header">
-            <h1 class="header-title">Personnes</h1>
-            <div class="header-actions">
-                <div class="search-box">
-                    <input type="text" class="search-input" placeholder="Rechercher...">
-                    <span class="search-icon"><i class="fas fa-search"></i></span>
-                </div>
-                <div class="user-profile">
-                    <div class="user-avatar">OC</div>
-                    <span>Officier Civil</span>
-                </div>
-            </div>
-        </header>
+<script>
+function viewPerson(id) {
+    window.location.href = `/admin/personnes/voir_personne.php?id=${id}`;
+}
 
-        <!-- Page Content -->
-        <div class="page-content">
-            <!-- Page Header -->
-            <div class="page-header">
-                <div class="page-title">
-                    <div class="page-title-icon"><i class="fas fa-users"></i></div>
-                    <h1>Liste des Personnes</h1>
-                </div>
-                <a href="#" class="add-person-btn">
-                    <span><i class="fas fa-plus"></i></span>
-                    Ajouter une Personne
-                </a>
-            </div>
-
-            <!-- Filters Section -->
-            <div class="filters-section">
-                <div class="filters-row">
-                    <div class="filter-group search-filter">
-                        <label class="filter-label">Rechercher</label>
-                        <div class="search-box">
-                            <input type="text" class="search-input" placeholder="Nom, prénom, profession..." id="searchInput">
-                            <span class="search-icon"><i class="fas fa-search"></i></span>
-                        </div>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Type</label>
-                        <select class="filter-select" id="typeFilter">
-                            <option value="">Tous</option>
-                            <option value="homme">Homme</option>
-                            <option value="femme">Femme</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">Nationalité</label>
-                        <select class="filter-select" id="nationalityFilter">
-                            <option value="">Toutes</option>
-                            <option value="Congolaise">Congolaise</option>
-                            <option value="Française">Française</option>
-                            <option value="Belge">Belge</option>
-                            <option value="Autre">Autre</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Table Section -->
-            <div class="table-section">
-                <div class="table-header">
-                    <h2 class="table-title">Personnes Enregistrées</h2>
-                    <div class="table-count" id="personCount">2,894 personnes</div>
-                </div>
-
-                <table class="persons-table">
-                    <thead>
-                        <tr>
-                            <th>Photo</th>
-                            <th>Nom & Prénom</th>
-                            <th>Type</th>
-                            <th>Date de Naissance</th>
-                            <th>Lieu de Naissance</th>
-                            <th>Nationalité</th>
-                            <th>Profession</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="personsTableBody">
-                        <!-- Sample data -->
-                        <tr>
-                            <td>
-                                <div class="person-photo placeholder">ML</div>
-                            </td>
-                            <td>
-                                <div class="person-name">MBALA Lucie</div>
-                                <div class="person-details">ID: 00001</div>
-                            </td>
-                            <td>
-                                <span class="person-type-badge femme">Femme</span>
-                            </td>
-                            <td>15/03/1992</td>
-                            <td>Kinshasa</td>
-                            <td>Congolaise</td>
-                            <td>Infirmière</td>
-                            <td>
-                                <div class="actions-cell">
-                                    <button class="action-btn view"><i class="fas fa-eye"></i></button>
-                                    <button class="action-btn edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn delete"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="person-photo placeholder">KJ</div>
-                            </td>
-                            <td>
-                                <div class="person-name">KABONGO Jean</div>
-                                <div class="person-details">ID: 00002</div>
-                            </td>
-                            <td>
-                                <span class="person-type-badge homme">Homme</span>
-                            </td>
-                            <td>22/08/1988</td>
-                            <td>Lubumbashi</td>
-                            <td>Congolaise</td>
-                            <td>Ingénieur</td>
-                            <td>
-                                <div class="actions-cell">
-                                    <button class="action-btn view"><i class="fas fa-eye"></i></button>
-                                    <button class="action-btn edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn delete"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <div class="person-photo placeholder">NM</div>
-                            </td>
-                            <td>
-                                <div class="person-name">NGUYEN Marie</div>
-                                <div class="person-details">ID: 00003</div>
-                            </td>
-                            <td>
-                                <span class="person-type-badge femme">Femme</span>
-                            </td>
-                            <td>07/12/1990</td>
-                            <td>Paris, France</td>
-                            <td>Française</td>
-                            <td>Professeure</td>
-                            <td>
-                                <div class="actions-cell">
-                                    <button class="action-btn view"><i class="fas fa-eye"></i></button>
-                                    <button class="action-btn edit"><i class="fas fa-edit"></i></button>
-                                    <button class="action-btn delete"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+function editPerson(id) {
+    window.location.href = `/admin/personnes/modifier_personne.php?id=${id}`;
+}
+</script>
 </body>
-
 </html>
