@@ -78,48 +78,51 @@ function uploadPhoto(array $file, string $subfolder = 'personnes', int $max_size
     // Chemin relatif depuis la racine du projet
     return 'uploads/' . $subfolder . '/' . $filename;
 }
-
-
 function addPerson($pdo, $post_data, $files, $upload_dir = 'uploads/') {
     $errors = [];
     $photo_path = null;
 
-    // Sanitize inputs
-    $nom = filter_input(INPUT_POST, 'nom', FILTER_SANITIZE_STRING);
-    $prenom = filter_input(INPUT_POST, 'prenom', FILTER_SANITIZE_STRING);
-    $type_personne = filter_input(INPUT_POST, 'type_personne', FILTER_SANITIZE_STRING);
-    $date_naissance = filter_input(INPUT_POST, 'date_naissance', FILTER_SANITIZE_STRING);
-    $lieu_naissance = filter_input(INPUT_POST, 'lieu_naissance', FILTER_SANITIZE_STRING);
-    $nationalite = filter_input(INPUT_POST, 'nationalite', FILTER_SANITIZE_STRING);
-    $profession = filter_input(INPUT_POST, 'profession', FILTER_SANITIZE_STRING);
-    $adresse_actuelle = filter_input(INPUT_POST, 'adresse_actuelle', FILTER_SANITIZE_STRING);
+    // Extraction & nettoyage de base
+    $nom = trim($post_data['nom'] ?? '');
+    $prenom = trim($post_data['prenom'] ?? '');
+    $type_personne = trim($post_data['type_personne'] ?? '');
+    $date_naissance = trim($post_data['date_naissance'] ?? '');
+    $lieu_naissance = trim($post_data['lieu_naissance'] ?? '');
+    $nationalite = trim($post_data['nationalite'] ?? '');
+    $profession = trim($post_data['profession'] ?? '');
+    $adresse_actuelle = trim($post_data['adresse_actuelle'] ?? '');
 
     // Validation
     if (empty($nom)) {
         $errors[] = "Le nom est requis.";
     }
+
     if (empty($prenom)) {
         $errors[] = "Le prénom est requis.";
     }
+
     if (!in_array($type_personne, ['homme', 'femme'])) {
         $errors[] = "Type de personne invalide.";
     }
+
     if (empty($nationalite)) {
         $errors[] = "La nationalité est requise.";
     }
+
     if (!empty($date_naissance) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_naissance)) {
-        $errors[] = "Format de date de naissance invalide.";
+        $errors[] = "Format de date de naissance invalide. (Attendu : AAAA-MM-JJ)";
     }
 
-if (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
-    $photo_path = uploadPhoto($files['photoInput'], 'personnes');
+    // Téléchargement de la photo
+    if (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $photo_path = uploadPhoto($files['photoInput'], 'personnes');
 
-    if ($photo_path === false) {
-        $errors[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
+        if ($photo_path === false) {
+            $errors[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
+        }
     }
-}
 
-
+    // Insertion en base si pas d'erreurs
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
@@ -144,7 +147,11 @@ if (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_
                 'photo' => $photo_path ?: null,
             ]);
 
-            return ['success' => true, 'message' => 'Personne ajoutée avec succès.', 'photo_path' => $photo_path];
+            return [
+                'success' => true,
+                'message' => 'Personne ajoutée avec succès.',
+                'photo_path' => $photo_path
+            ];
         } catch (PDOException $e) {
             $errors[] = "Erreur lors de l'enregistrement: " . $e->getMessage();
         }
@@ -152,17 +159,17 @@ if (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_
 
     return ['success' => false, 'errors' => $errors];
 }
+
 function editPerson($pdo, $id_personne, $post_data, $files) {
     $errors = [];
     $photo_path = null;
-    $remove_photo = false;
 
     // Vérifier si la personne existe
     try {
         $stmt = $pdo->prepare("SELECT * FROM personnes WHERE id_personne = :id");
         $stmt->execute(['id' => $id_personne]);
         $existing_person = $stmt->fetch();
-        
+
         if (!$existing_person) {
             return ['success' => false, 'errors' => ['Personne non trouvée.']];
         }
@@ -170,17 +177,15 @@ function editPerson($pdo, $id_personne, $post_data, $files) {
         return ['success' => false, 'errors' => ['Erreur lors de la récupération des données: ' . $e->getMessage()]];
     }
 
-    // Sanitize inputs
-    $nom = filter_input(INPUT_POST, 'nom', FILTER_SANITIZE_STRING);
-    $prenom = filter_input(INPUT_POST, 'prenom', FILTER_SANITIZE_STRING);
-    $type_personne = filter_input(INPUT_POST, 'type_personne', FILTER_SANITIZE_STRING);
-    $date_naissance = filter_input(INPUT_POST, 'date_naissance', FILTER_SANITIZE_STRING);
-    $lieu_naissance = filter_input(INPUT_POST, 'lieu_naissance', FILTER_SANITIZE_STRING);
-    $nationalite = filter_input(INPUT_POST, 'nationalite', FILTER_SANITIZE_STRING);
-    $profession = filter_input(INPUT_POST, 'profession', FILTER_SANITIZE_STRING);
-    $adresse_actuelle = filter_input(INPUT_POST, 'adresse_actuelle', FILTER_SANITIZE_STRING);
-    
-    // Vérifier si l'utilisateur veut supprimer la photo
+    // Nettoyage des inputs
+    $nom = trim($post_data['nom'] ?? '');
+    $prenom = trim($post_data['prenom'] ?? '');
+    $type_personne = trim($post_data['type_personne'] ?? '');
+    $date_naissance = trim($post_data['date_naissance'] ?? '');
+    $lieu_naissance = trim($post_data['lieu_naissance'] ?? '');
+    $nationalite = trim($post_data['nationalite'] ?? '');
+    $profession = trim($post_data['profession'] ?? '');
+    $adresse_actuelle = trim($post_data['adresse_actuelle'] ?? '');
     $remove_photo = isset($post_data['remove_photo']) && $post_data['remove_photo'] === '1';
 
     // Validation
@@ -197,33 +202,31 @@ function editPerson($pdo, $id_personne, $post_data, $files) {
         $errors[] = "La nationalité est requise.";
     }
     if (!empty($date_naissance) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_naissance)) {
-        $errors[] = "Format de date de naissance invalide.";
+        $errors[] = "Format de date de naissance invalide (attendu : AAAA-MM-JJ).";
     }
 
     // Gestion de la photo
     if ($remove_photo) {
-        // Supprimer l'ancienne photo du serveur si elle existe
         if (!empty($existing_person['photo']) && file_exists($existing_person['photo'])) {
             unlink($existing_person['photo']);
         }
         $photo_path = null;
     } elseif (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
-        // Nouvelle photo uploadée
         $photo_path = uploadPhoto($files['photoInput'], 'personnes');
-        
+
         if ($photo_path === false) {
             $errors[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
         } else {
-            // Supprimer l'ancienne photo si une nouvelle est uploadée avec succès
             if (!empty($existing_person['photo']) && file_exists($existing_person['photo'])) {
                 unlink($existing_person['photo']);
             }
         }
     } else {
-        // Garder l'ancienne photo
+        // Garder l’ancienne photo
         $photo_path = $existing_person['photo'];
     }
 
+    // Mise à jour si pas d'erreurs
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
@@ -262,6 +265,7 @@ function editPerson($pdo, $id_personne, $post_data, $files) {
 
     return ['success' => false, 'errors' => $errors];
 }
+
 function getAllPersons($pdo, $search = '', $limit = 50, $offset = 0) {
     try {
         // Construction de la requête avec filtres
@@ -342,7 +346,7 @@ function getAllPersons($pdo, $search = '', $limit = 50, $offset = 0) {
 }
 
 function getPersonPhoto($photo_path) {
-    if (!empty($photo_path) && file_exists($photo_path)) {
+    if (!empty($photo_path)) {
         return $photo_path;
     }
     return null;
