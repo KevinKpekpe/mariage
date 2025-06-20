@@ -372,6 +372,74 @@ function formatDate($date_string) {
 }
 
 
-function getPersonne($id){
+function getPersonne($pdo, $id_personne) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                id_personne,
+                nom,
+                prenom,
+                type_personne,
+                date_naissance,
+                lieu_naissance,
+                nationalite,
+                profession,
+                adresse_actuelle,
+                photo,
+                date_creation,
+                date_mise_a_jour
+            FROM personnes 
+            WHERE id_personne = :id
+        ");
+        $stmt->execute(['id' => $id_personne]);
+        $person = $stmt->fetch();
+        
+        if ($person) {
+            return ['success' => true, 'data' => $person];
+        } else {
+            return ['success' => false, 'error' => 'Personne non trouvée.'];
+        }
+        
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération: ' . $e->getMessage()
+        ];
+    }
+}
+function deletePerson($pdo, $id_personne) {
+    $errors = [];
     
+    // Vérifier si la personne existe
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM personnes WHERE id_personne = :id");
+        $stmt->execute(['id' => $id_personne]);
+        $person = $stmt->fetch();
+        
+        if (!$person) {
+            return ['success' => false, 'errors' => ['Personne non trouvée.']];
+        }
+        
+        if (!empty($person['photo']) && file_exists($person['photo'])) {
+            if (!unlink($person['photo'])) {
+                $errors[] = "Impossible de supprimer le fichier photo, mais la personne sera supprimée.";
+            }
+        }
+        
+        // Supprimer la personne de la base de données
+        $stmt = $pdo->prepare("DELETE FROM personnes WHERE id_personne = :id");
+        $stmt->execute(['id' => $id_personne]);
+        
+        return [
+            'success' => true,
+            'message' => 'Personne supprimée avec succès.',
+            'warnings' => $errors 
+        ];
+        
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'errors' => ['Erreur lors de la suppression: ' . $e->getMessage()]
+        ];
+    }
 }

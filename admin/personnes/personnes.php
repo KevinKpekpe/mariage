@@ -13,6 +13,21 @@ $persons = $result['data'];
 $total_count = $result['total_count'];
 $total_pages = ceil($total_count / $per_page);
 
+// Traitement de la suppression
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    $id_to_delete = (int) $_POST['delete_id'];
+    $delete_result = deletePerson($pdo, $id_to_delete);
+
+    if ($delete_result['success']) {
+        header('Location: /admin/personnes/personnes.php');
+        exit;
+    } else {
+        $delete_error = implode('<br>', $delete_result['errors']);
+        $delete_warnings = $delete_result['warnings'] ?? [];
+    }
+}
+
+
 
 
 ?>
@@ -45,7 +60,6 @@ $total_pages = ceil($total_count / $per_page);
             </div>
         </form>
     </div>
-
     <!-- Table Section -->
     <div class="table-section">
         <div class="table-header">
@@ -132,10 +146,13 @@ $total_pages = ceil($total_count / $per_page);
                                         onclick="editPerson(<?php echo $person['id_personne']; ?>)">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="action-btn delete" title="Supprimer"
-                                        onclick="deletePerson(<?php echo $person['id_personne']; ?>, '<?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?>')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer <?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?> ?')">
+                                        <input type="hidden" name="delete_id" value="<?php echo $person['id_personne']; ?>">
+                                        <button class="action-btn delete" title="Supprimer" type="submit">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+
                                 </div>
                             </td>
                         </tr>
