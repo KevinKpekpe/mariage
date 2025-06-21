@@ -14,6 +14,21 @@ $total_count = $result['total_count'];
 $total_pages = ceil($total_count / $per_page);
 
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
+    $id_to_delete = (int) $_POST['delete_id'];
+    $delete_result = deletePerson($pdo, $id_to_delete);
+
+    if ($delete_result['success']) {
+        header('Location: /admin/personnes/personnes.php');
+        exit;
+    } else {
+        $delete_error = implode('<br>', $delete_result['errors']);
+        $delete_warnings = $delete_result['warnings'] ?? [];
+    }
+}
+
+
+
 
 ?>
 <!-- Page Content -->
@@ -37,7 +52,7 @@ $total_pages = ceil($total_count / $per_page);
                 <div class="filter-group search-filter">
                     <label class="filter-label">Rechercher</label>
                     <div class="search-box">
-                        <input type="text" class="search-input" placeholder="Nom, prénom, profession..." 
+                        <input type="text" class="search-input" placeholder="Nom, prénom, profession..."
                             name="search" value="<?php echo htmlspecialchars($search); ?>">
                         <span class="search-icon"><i class="fas fa-search"></i></span>
                     </div>
@@ -45,7 +60,6 @@ $total_pages = ceil($total_count / $per_page);
             </div>
         </form>
     </div>
-
     <!-- Table Section -->
     <div class="table-section">
         <div class="table-header">
@@ -92,13 +106,12 @@ $total_pages = ceil($total_count / $per_page);
                     <?php foreach ($persons as $person): ?>
                         <tr>
                             <td>
-                                <?php 
+                                <?php
                                 $photo_path = getPersonPhoto($person['photo']);
-                                if ($photo_path): 
+                                if ($photo_path):
                                 ?>
                                     <div class="person-photo">
-                                        <img src="<?php echo htmlspecialchars($photo_path); ?>" 
-                                            alt="Photo de <?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?>">
+                                        <img src="../../<?php echo htmlspecialchars($photo_path); ?>" alt="Photo actuelle" style="width: 100%; height: 100%; object-fit: cover;">
                                     </div>
                                 <?php else: ?>
                                     <div class="person-photo placeholder">
@@ -125,18 +138,21 @@ $total_pages = ceil($total_count / $per_page);
                             <td><?php echo htmlspecialchars($person['profession'] ?: '-'); ?></td>
                             <td>
                                 <div class="actions-cell">
-                                    <button class="action-btn view" title="Voir les détails" 
-                                            onclick="viewPerson(<?php echo $person['id_personne']; ?>)">
+                                    <button class="action-btn view" title="Voir les détails"
+                                        onclick="viewPerson(<?php echo $person['id_personne']; ?>)">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <button class="action-btn edit" title="Modifier" 
-                                            onclick="editPerson(<?php echo $person['id_personne']; ?>)">
+                                    <button class="action-btn edit" title="Modifier"
+                                        onclick="editPerson(<?php echo $person['id_personne']; ?>)">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="action-btn delete" title="Supprimer" 
-                                            onclick="deletePerson(<?php echo $person['id_personne']; ?>, '<?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?>')">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Supprimer <?php echo htmlspecialchars($person['prenom'] . ' ' . $person['nom']); ?> ?')">
+                                        <input type="hidden" name="delete_id" value="<?php echo $person['id_personne']; ?>">
+                                        <button class="action-btn delete" title="Supprimer" type="submit">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+
                                 </div>
                             </td>
                         </tr>
@@ -160,19 +176,19 @@ $total_pages = ceil($total_count / $per_page);
                                 <i class="fas fa-angle-left"></i>
                             </a>
                         <?php endif; ?>
-                        
-                        <?php 
+
+                        <?php
                         $start_page = max(1, $page - 2);
                         $end_page = min($total_pages, $page + 2);
-                        
-                        for ($i = $start_page; $i <= $end_page; $i++): 
+
+                        for ($i = $start_page; $i <= $end_page; $i++):
                         ?>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>" 
-                            class="pagination-btn <?php echo $i === $page ? 'active' : ''; ?>">
+                            <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $i])); ?>"
+                                class="pagination-btn <?php echo $i === $page ? 'active' : ''; ?>">
                                 <?php echo $i; ?>
                             </a>
                         <?php endfor; ?>
-                        
+
                         <?php if ($page < $total_pages): ?>
                             <a href="?<?php echo http_build_query(array_merge($_GET, ['page' => $page + 1])); ?>" class="pagination-btn">
                                 <i class="fas fa-angle-right"></i>
@@ -189,13 +205,14 @@ $total_pages = ceil($total_count / $per_page);
 </div>
 
 <script>
-function viewPerson(id) {
-    window.location.href = `/admin/personnes/voir_personne.php?id=${id}`;
-}
+    function viewPerson(id) {
+        window.location.href = `/admin/personnes/voir_personne.php?id=${id}`;
+    }
 
-function editPerson(id) {
-    window.location.href = `/admin/personnes/modifier_personne.php?id=${id}`;
-}
+    function editPerson(id) {
+        window.location.href = `/admin/personnes/modifier_personne.php?id=${id}`;
+    }
 </script>
 </body>
+
 </html>

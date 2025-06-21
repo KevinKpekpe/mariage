@@ -97,15 +97,7 @@ $form_data = [
                     <div class="photo-upload-section">
                         <div class="photo-preview">
                             <div class="photo-placeholder" id="photoPlaceholder" onclick="document.getElementById('photoInput').click()">
-                                <?php if (!empty($personne['photo']) && file_exists($personne['photo'])): ?>
-                                    <img src="<?php echo htmlspecialchars($personne['photo']); ?>" alt="Photo actuelle" style="width: 100%; height: 100%; object-fit: cover;">
-                                <?php else: ?>
-                                    <div>
-                                        <i class="fas fa-camera"></i><br>
-                                        Cliquez pour ajouter<br>
-                                        une photo
-                                    </div>
-                                <?php endif; ?>
+                                <img src="../../<?php echo htmlspecialchars($personne['photo']); ?>" alt="Photo actuelle" style="width: 100%; height: 100%; object-fit: cover;">
                             </div>
                             <input type="file" id="photoInput" name="photoInput" class="photo-upload-input" accept="image/*">
                             <input type="hidden" id="removePhoto" name="remove_photo" value="0">
