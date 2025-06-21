@@ -1,141 +1,108 @@
-<!DOCTYPE html>
-<html lang="fr">
+<?php
+require_once __DIR__ . '/../header.php';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <title>Registre Mariages Civils - Nouvelle Personne</title>
-    <link rel="stylesheet" href="/admin/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-</head>
+$errors = [];
+$success = '';
 
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-diamond"></div>
-                <div class="logo-text">Mariage</div>
-            </div>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Menu Principal</div>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-                    Dashboard
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-heart"></i></span>
-                    Mariages
-                </a>
-                <a href="#" class="nav-item active">
-                    <span class="nav-icon"><i class="fas fa-users"></i></span>
-                    Personnes
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-user-tie"></i></span>
-                    Officiers
-                </a>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Gestion</div>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-city"></i></span>
-                    Communes
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-handshake"></i></span>
-                    Parents
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-file-signature"></i></span>
-                    Témoins
-                </a>
-            </div>
-        </nav>
-    </div>
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Header -->
-        <header class="header">
-            <h1 class="header-title">Nouvel Officier</h1>
-            <div class="header-actions">
-                <div class="search-box">
-                    <input type="text" class="search-input" placeholder="Rechercher...">
-                    <span class="search-icon"><i class="fas fa-search"></i></span>
-                </div>
-                <div class="user-profile">
-                    <div class="user-avatar">OC</div>
-                    <span>Officier Civil</span>
-                </div>
-            </div>
-        </header>
-        <!-- Page Content -->
+if (isset($_SESSION['error'])) {
+    if (is_array($_SESSION['error'])) {
+        $errors = $_SESSION['error'];
+    } else {
+        $errors[] = $_SESSION['error'];
+    }
+    unset($_SESSION['error']); 
+}
+
+if (isset($_SESSION['success'])) {
+    $success = $_SESSION['success'];
+    unset($_SESSION['success']);
+}
+
+$id_officier = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($id_officier <= 0) {
+    header('Location: officiers.php');
+    exit;
+}
+
+$officier_result = getOfficier($pdo, $id_officier);
+
+if (!$officier_result['success']) {
+    $_SESSION['error'] = $officier_result['error']; 
+    header('Location: officiers.php');
+    exit;
+}
+
+$officier = $officier_result['data'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $mot_de_passe = $_POST['mot_de_passe'] ?? '';
+    $confirmer_mot_de_passe = $_POST['confirmer_mot_de_passe'] ?? '';
+    
+    if (!empty($mot_de_passe) && $mot_de_passe !== $confirmer_mot_de_passe) {
+        $_SESSION['error'] = "Les mots de passe ne correspondent pas.";
+        $errors[] = "Les mots de passe ne correspondent pas."; 
+    } else {
+        $post_data = $_POST;
+        $post_data['id_commune'] = $_POST['commune']; 
+        
+        $result = editOfficier($pdo, $id_officier, $post_data);
+        
+        if ($result['success']) {
+            $_SESSION['success'] = $result['message'];
+            header('Location: sofficiers.php');
+            exit;
+        } else {
+            if (isset($result['errors'])) {
+                foreach ($result['errors'] as $err) {
+                    $errors[] = $err;
+                }
+            } else if (isset($result['error'])) { 
+                $errors[] = $result['error'];
+            }
+            $_SESSION['error'] = implode(', ', $errors); }
+    }
+}
+
+$communes = getAllCommunes($pdo);
+?>
         <div class="page-content">
-            <!-- Page Header -->
             <div class="page-header">
                 <div class="page-title">
-                    <div class="page-title-icon"><i class="fas fa-plus"></i></div>
+                    <div class="page-title-icon"><i class="fas fa-edit"></i></div>
                     <div>
-                        <h1>Ajouter un Nouvel Officier</h1>
+                        <h1>Modifier un Officier</h1>
                         <div class="breadcrumb">
-                            <a href="#">Officiers</a>
+                            <a href="liste_officiers.php">Officiers</a>
                             <span>→</span>
-                            <span>Nouvel officier</span>
+                            <span>Modifier officier</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Form Container -->
             <div class="form-container">
                 <div class="form-header">
                     <h2>Informations de l'Officier</h2>
-                    <p>Veuillez remplir tous les champs requis pour enregistrer un nouvel officier dans le système.</p>
+                    <p>Modifiez les informations de l'officier <?php echo htmlspecialchars($officier['nom'] . ' ' . $officier['prenom']); ?>.</p>
                 </div>
 
-                <div class="form-content">
-                    <form id="officierForm" class="form-sections">
-                        <!-- Photo Section -->
-                        <div class="form-section">
-                            <div class="section-title">
-                                <span class="section-icon"><i class="fas fa-camera"></i></span>
-                                Photo d'Identité
-                            </div>
-                            <div class="photo-upload-section">
-                                <div class="photo-preview">
-                                    <div class="photo-placeholder" id="photoPlaceholder" onclick="document.getElementById('photoInput').click()">
-                                        <div>
-                                            <i class="fas fa-camera"></i><br>
-                                            Cliquez pour ajouter<br>
-                                            une photo
-                                        </div>
-                                    </div>
-                                    <input type="file" id="photoInput" class="photo-upload-input" accept="image/*">
-                                    <div class="photo-actions" id="photoActions" style="display: none;">
-                                        <button type="button" class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">
-                                            Changer
-                                        </button>
-                                        <button type="button" class="photo-upload-btn remove" onclick="removePhoto()">
-                                            Supprimer
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="form-group" style="flex: 1;">
-                                    <p class="form-help">
-                                        • Format accepté : JPG, PNG (max 2MB)<br>
-                                        • Dimensions recommandées : 300x300px<br>
-                                        • Photo récente en couleur sur fond clair
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+        <?php if (!empty($errors)): // Now $errors will contain messages from the current request or previous redirects ?>
+            <div class="error-message">
+                <?php foreach ($errors as $error): ?>
+                    <p><?php echo htmlspecialchars($error); ?></p>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($success)): ?>
+            <div class="success-message">
+                <p><?php echo htmlspecialchars($success); ?></p>
+            </div>
+        <?php endif; ?>
 
-                        <!-- Informations Personnelles -->
+                <div class="form-content">
+                    <form id="officierForm" class="form-sections" method="POST">
                         <div class="form-section">
                             <div class="section-title">
                                 <span class="section-icon"><i class="fas fa-user"></i></span>
@@ -144,21 +111,20 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label class="form-label">Nom <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="nom" required placeholder="Nom de famille">
+                                    <input type="text" class="form-input" name="nom" required placeholder="Nom de famille" value="<?php echo htmlspecialchars($officier['nom']); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Prénom <span class="required">*</span></label>
-                                    <input type="text" class="form-input" name="prenom" required placeholder="Prénom(s)">
+                                    <input type="text" class="form-input" name="prenom" required placeholder="Prénom(s)" value="<?php echo htmlspecialchars($officier['prenom']); ?>">
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Matricule</label>
-                                    <input type="text" class="form-input" name="matricule" placeholder="Numéro de matricule">
+                                    <input type="text" class="form-input" name="matricule" placeholder="Numéro de matricule" value="<?php echo htmlspecialchars($officier['matricule'] ?? ''); ?>">
                                     <div class="form-help">Si applicable</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Informations de Contact -->
                         <div class="form-section">
                             <div class="section-title">
                                 <span class="section-icon"><i class="fas fa-envelope"></i></span>
@@ -167,16 +133,11 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label class="form-label">Email <span class="required">*</span></label>
-                                    <input type="email" class="form-input" name="email" required placeholder="Adresse email">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Téléphone</label>
-                                    <input type="tel" class="form-input" name="telephone" placeholder="Numéro de téléphone">
+                                    <input type="email" class="form-input" name="email" required placeholder="Adresse email" value="<?php echo htmlspecialchars($officier['email']); ?>">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Informations de Compte -->
                         <div class="form-section">
                             <div class="section-title">
                                 <span class="section-icon"><i class="fas fa-lock"></i></span>
@@ -184,17 +145,17 @@
                             </div>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">Mot de Passe <span class="required">*</span></label>
-                                    <input type="password" class="form-input" name="mot_de_passe" required placeholder="Mot de passe">
+                                    <label class="form-label">Nouveau Mot de Passe</label>
+                                    <input type="password" class="form-input" name="mot_de_passe" placeholder="Laissez vide pour ne pas changer">
+                                    <div class="form-help">Laissez vide pour conserver le mot de passe actuel</div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Confirmer le Mot de Passe <span class="required">*</span></label>
-                                    <input type="password" class="form-input" name="confirmer_mot_de_passe" required placeholder="Confirmer le mot de passe">
+                                    <label class="form-label">Confirmer le Mot de Passe</label>
+                                    <input type="password" class="form-input" name="confirmer_mot_de_passe" placeholder="Confirmer le nouveau mot de passe">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Affectation -->
                         <div class="form-section">
                             <div class="section-title">
                                 <span class="section-icon"><i class="fas fa-city"></i></span>
@@ -205,44 +166,29 @@
                                     <label class="form-label">Commune <span class="required">*</span></label>
                                     <select class="form-select" name="commune" required>
                                         <option value="">Sélectionner la commune</option>
-                                        <option value="Kinshasa">Kinshasa</option>
-                                        <option value="Lubumbashi">Lubumbashi</option>
-                                        <!-- Ajouter d'autres communes ici -->
+                                        <?php foreach ($communes as $commune): ?>
+                                            <option value="<?php echo $commune['id_commune']; ?>" <?php echo ($commune['id_commune'] == $officier['id_commune']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($commune['nom_commune']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Rôle <span class="required">*</span></label>
                                     <select class="form-select" name="role" required>
                                         <option value="">Sélectionner le rôle</option>
-                                        <option value="officier_communal">Officier Communal</option>
-                                        <option value="admin">Administrateur</option>
+                                        <option value="officier_communal" <?php echo ($officier['role'] === 'officier_communal') ? 'selected' : ''; ?>>Officier Communal</option>
+                                        <option value="admin" <?php echo ($officier['role'] === 'admin') ? 'selected' : ''; ?>>Administrateur</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Adresse -->
-                        <div class="form-section">
-                            <div class="section-title">
-                                <span class="section-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                Adresse Actuelle
-                            </div>
-                            <div class="form-grid full-width">
-                                <div class="form-group">
-                                    <label class="form-label">Adresse Complète</label>
-                                    <textarea class="form-textarea" name="adresse_actuelle" placeholder="Numéro, rue, quartier, commune, ville..."></textarea>
-                                    <div class="form-help">Adresse de résidence actuelle complète</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Form Actions -->
                         <div class="form-actions">
-                            <a href="#" class="btn btn-outline">
+                            <a href="officiers.php" class="btn btn-outline">
                                 Annuler
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                Créer l'Officier
+                                Modifier l'Officier
                             </button>
                         </div>
                     </form>
@@ -253,4 +199,3 @@
     <script src="main.js"></script>
 </body>
 </html>
-

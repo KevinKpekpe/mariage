@@ -13,7 +13,7 @@ $persons = $result['data'];
 $total_count = $result['total_count'];
 $total_pages = ceil($total_count / $per_page);
 
-// Traitement de la suppression
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $id_to_delete = (int) $_POST['delete_id'];
     $delete_result = deletePerson($pdo, $id_to_delete);

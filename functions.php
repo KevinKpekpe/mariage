@@ -443,3 +443,355 @@ function deletePerson($pdo, $id_personne) {
         ];
     }
 }
+
+function getAllCommunes($pdo) {
+    try {
+        $stmt = $pdo->query("SELECT id_commune, nom_commune FROM communes ORDER BY nom_commune ASC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
+    }
+}
+// officiers 
+function addOfficier(PDO $pdo, array $post_data): array {
+    $errors = [];
+
+    // Extraction et nettoyage des données
+    $nom = trim($post_data['nom'] ?? ''); 
+    $prenom = trim($post_data['prenom'] ?? '');
+    $matricule = trim($post_data['matricule'] ?? '');
+    $email = trim($post_data['email'] ?? '');
+    $mot_de_passe = $post_data['mot_de_passe'] ?? '';
+    $id_commune = filter_var($post_data['id_commune'] ?? '', FILTER_VALIDATE_INT);
+    $role = trim($post_data['role'] ?? '');
+
+    // Validation des champs requis
+    if (empty($nom)) {
+        $errors[] = "Le nom est requis.";
+    }
+    if (empty($prenom)) {
+        $errors[] = "Le prénom est requis.";
+    }
+    if (empty($email)) {
+        $errors[] = "L'email est requis.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "L'adresse email est invalide.";
+    }
+    if (empty($mot_de_passe)) {
+        $errors[] = "Le mot de passe est requis.";
+    } elseif (strlen($mot_de_passe) < 6) { // Exemple de validation de longueur minimale
+        $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
+    }
+    if ($id_commune === false || $id_commune <= 0) {
+        $errors[] = "L'ID de la commune est invalide.";
+    }
+    if (!in_array($role, ['admin', 'officier_communal'])) {
+        $errors[] = "Le rôle sélectionné est invalide.";
+    }
+
+    // Vérifier l'unicité de l'email
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM officiers WHERE email = :email");
+            $stmt->execute(['email' => $email]);
+            if ($stmt->fetchColumn() > 0) {
+                $errors[] = "Cet email est déjà utilisé.";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Erreur de base de données lors de la vérification de l'email: " . $e->getMessage();
+        }
+    }
+
+    // Insertion en base si aucune erreur
+    if (empty($errors)) {
+        try {
+            $hashed_password = password_hash($mot_de_passe, PASSWORD_DEFAULT);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO officiers (
+                    nom, prenom, matricule, email, mot_de_passe, id_commune, role
+                ) VALUES (
+                    :nom, :prenom, :matricule, :email, :mot_de_passe, :id_commune, :role
+                )
+            ");
+
+            $stmt->execute([
+                'nom' => $nom,
+                'prenom' => $prenom,
+                'matricule' => $matricule ?: null, // Peut être NULL
+                'email' => $email,
+                'mot_de_passe' => $hashed_password,
+                'id_commune' => $id_commune,
+                'role' => $role,
+            ]);
+
+            return ['success' => true, 'message' => 'Officier ajouté avec succès.'];
+
+        } catch (PDOException $e) {
+            $errors[] = "Erreur lors de l'enregistrement de l'officier: " . $e->getMessage();
+        }
+    }
+
+    return ['success' => false, 'errors' => $errors];
+}
+function editOfficier(PDO $pdo, int $id_officier, array $post_data): array {
+    $errors = [];
+
+    // Vérifier si l'officier existe
+    try {
+        $stmt = $pdo->prepare("SELECT id_officier, email FROM officiers WHERE id_officier = :id");
+        $stmt->execute(['id' => $id_officier]);
+        $existing_officer = $stmt->fetch();
+
+        if (!$existing_officer) {
+            return ['success' => false, 'errors' => ['Officier non trouvé.']];
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'errors' => ['Erreur de base de données lors de la récupération de l\'officier: ' . $e->getMessage()]];
+    }
+    $nom = trim($post_data['nom'] ?? '');
+    $prenom = trim($post_data['prenom'] ?? '');
+    $matricule = trim($post_data['matricule'] ?? '');
+    $email = trim($post_data['email'] ?? '');
+    $mot_de_passe = $post_data['mot_de_passe'] ?? ''; // Peut être vide si non modifié
+    $id_commune = filter_var($post_data['id_commune'] ?? '', FILTER_VALIDATE_INT);
+    $role = trim($post_data['role'] ?? '');
+
+    // Validation des champs requis
+    if (empty($nom)) {
+        $errors[] = "Le nom est requis.";
+    }
+    if (empty($prenom)) {
+        $errors[] = "Le prénom est requis.";
+    }
+    if (empty($email)) {
+        $errors[] = "L'email est requis.";
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "L'adresse email est invalide.";
+    }
+    if ($id_commune === false || $id_commune <= 0) {
+        $errors[] = "L'ID de la commune est invalide.";
+    }
+    if (!in_array($role, ['admin', 'officier_communal'])) {
+        $errors[] = "Le rôle sélectionné est invalide.";
+    }
+
+    // Vérifier l'unicité de l'email (si l'email a changé)
+    if (empty($errors) && $email !== $existing_officer['email']) {
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM officiers WHERE email = :email AND id_officier != :id");
+            $stmt->execute(['email' => $email, 'id' => $id_officier]);
+            if ($stmt->fetchColumn() > 0) {
+                $errors[] = "Cet email est déjà utilisé par un autre officier.";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Erreur de base de données lors de la vérification de l'email: " . $e->getMessage();
+        }
+    }
+    if (empty($errors)) {
+        try {
+            $sql = "
+                UPDATE officiers SET
+                    nom = :nom,
+                    prenom = :prenom,
+                    matricule = :matricule,
+                    email = :email,
+                    id_commune = :id_commune,
+                    role = :role,
+                    date_mise_a_jour = NOW()
+                WHERE id_officier = :id
+            ";
+            $params = [
+                'nom' => $nom,
+                'prenom' => $prenom,
+                'matricule' => $matricule ?: null,
+                'email' => $email,
+                'id_commune' => $id_commune,
+                'role' => $role,
+                'id' => $id_officier
+            ];
+
+            // Si un nouveau mot de passe est fourni, le hacher et l'inclure dans la mise à jour
+            if (!empty($mot_de_passe)) {
+                if (strlen($mot_de_passe) < 6) {
+                    $errors[] = "Le nouveau mot de passe doit contenir au moins 6 caractères.";
+                } else {
+                    $hashed_password = password_hash($mot_de_passe, PASSWORD_DEFAULT);
+                    $sql = "
+                        UPDATE officiers SET
+                            nom = :nom,
+                            prenom = :prenom,
+                            matricule = :matricule,
+                            email = :email,
+                            mot_de_passe = :mot_de_passe,
+                            id_commune = :id_commune,
+                            role = :role,
+                            date_mise_a_jour = NOW()
+                        WHERE id_officier = :id
+                    ";
+                    $params['mot_de_passe'] = $hashed_password;
+                }
+            }
+            
+            // Si des erreurs ont été ajoutées pour le mot de passe, retourner
+            if (!empty($errors)) {
+                return ['success' => false, 'errors' => $errors];
+            }
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
+            return ['success' => true, 'message' => 'Officier modifié avec succès.'];
+
+        } catch (PDOException $e) {
+            $errors[] = "Erreur lors de la modification de l'officier: " . $e->getMessage();
+        }
+    }
+
+    return ['success' => false, 'errors' => $errors];
+}
+function getOfficier(PDO $pdo, int $id_officier): array {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                o.id_officier,
+                o.nom,
+                o.prenom,
+                o.matricule,
+                o.email,
+                o.id_commune,
+                c.nom_commune,
+                c.district,
+                c.province,
+                o.role,
+                o.date_creation,
+                o.date_mise_a_jour
+            FROM officiers o
+            JOIN communes c ON o.id_commune = c.id_commune
+            WHERE o.id_officier = :id
+        ");
+        $stmt->execute(['id' => $id_officier]);
+        $officier = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($officier) {
+            return ['success' => true, 'data' => $officier];
+        } else {
+            return ['success' => false, 'error' => 'Officier non trouvé.'];
+        }
+
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération de l\'officier: ' . $e->getMessage()
+        ];
+    }
+}
+function getAllOfficiers(PDO $pdo, string $search = '', int $limit = 50, int $offset = 0): array {
+    try {
+        $where_conditions = [];
+        $params = [];
+
+        // Filtre de recherche
+        if (!empty($search)) {
+            $where_conditions[] = "(o.nom LIKE :search OR o.prenom LIKE :search OR o.email LIKE :search OR o.matricule LIKE :search OR c.nom_commune LIKE :search)";
+            $params['search'] = '%' . $search . '%';
+        }
+
+        $where_clause = '';
+        if (!empty($where_conditions)) {
+            $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
+        }
+        $sql = "
+            SELECT
+                o.id_officier,
+                o.nom,
+                o.prenom,
+                o.matricule,
+                o.email,
+                o.role,
+                c.nom_commune,
+                c.district,
+                c.province,
+                o.date_creation,
+                o.date_mise_a_jour
+            FROM officiers o
+            JOIN communes c ON o.id_commune = c.id_commune
+            {$where_clause}
+            ORDER BY o.nom ASC, o.prenom ASC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $pdo->prepare($sql);
+
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+        $stmt->execute();
+        $officiers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Requête pour le compte total (pour la pagination)
+        $count_sql = "
+            SELECT COUNT(o.id_officier) as total
+            FROM officiers o
+            JOIN communes c ON o.id_commune = c.id_commune
+            {$where_clause}
+        ";
+        $count_stmt = $pdo->prepare($count_sql);
+
+        foreach ($params as $key => $value) {
+            $count_stmt->bindValue(':' . $key, $value);
+        }
+        $count_stmt->execute();
+        $total_count = $count_stmt->fetch()['total'];
+
+        return [
+            'success' => true,
+            'data' => $officiers,
+            'total_count' => $total_count,
+            'current_count' => count($officiers)
+        ];
+
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération des officiers: ' . $e->getMessage(),
+            'data' => [],
+            'total_count' => 0,
+            'current_count' => 0
+        ];
+    }
+}
+function deleteOfficier(PDO $pdo, int $id_officier): array {
+    try {
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM officiers WHERE id_officier = :id");
+        $stmt->execute(['id' => $id_officier]);
+        if ($stmt->fetchColumn() === 0) {
+            return ['success' => false, 'errors' => ['Officier non trouvé.']];
+        }
+        $stmt = $pdo->prepare("DELETE FROM officiers WHERE id_officier = :id");
+        $stmt->execute(['id' => $id_officier]);
+
+        if ($stmt->rowCount() > 0) {
+            return ['success' => true, 'message' => 'Officier supprimé avec succès.'];
+        } else {
+            return ['success' => false, 'errors' => ['Aucun officier supprimé (peut-être déjà inexistant).']];
+        }
+
+    } catch (PDOException $e) {
+        
+        if ($e->getCode() === '23000') { 
+            return [
+                'success' => false,
+                'errors' => ['Impossible de supprimer cet officier car il est lié à d\'autres enregistrements (ex: mariages). Supprimez d\'abord les enregistrements liés.'],
+                'debug_message' => $e->getMessage()
+            ];
+        }
+        return [
+            'success' => false,
+            'errors' => ['Erreur lors de la suppression de l\'officier: ' . $e->getMessage()]
+        ];
+    }
+}
