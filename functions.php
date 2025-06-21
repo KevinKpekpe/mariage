@@ -14,7 +14,7 @@ function authenticateUser($pdo, $email, $password) {
     if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("
-                SELECT id_officier, email, mot_de_passe, nom, prenom, role 
+                SELECT id_officier, email, mot_de_passe, nom, prenom, role, id_commune 
                 FROM officiers 
                 WHERE email = :email
             ");
@@ -27,6 +27,7 @@ function authenticateUser($pdo, $email, $password) {
                 $_SESSION['nom'] = $user['nom'];
                 $_SESSION['prenom'] = $user['prenom'];
                 $_SESSION['role'] = $user['role'];
+                $_SESSION['id_commune'] = $user['id_commune'];
                 return ['success' => true, 'role' => $user['role']];
             } else {
                 $errors[] = "Email ou mot de passe incorrect.";
@@ -222,7 +223,7 @@ function editPerson($pdo, $id_personne, $post_data, $files) {
             }
         }
     } else {
-        // Garder l’ancienne photo
+        // Garder l'ancienne photo
         $photo_path = $existing_person['photo'];
     }
 
@@ -793,5 +794,319 @@ function deleteOfficier(PDO $pdo, int $id_officier): array {
             'success' => false,
             'errors' => ['Erreur lors de la suppression de l\'officier: ' . $e->getMessage()]
         ];
+    }
+}
+
+function addMariage(PDO $pdo, array $post_data, array $session_data): array {
+    $errors = [];
+
+    // Extraction et validation des données du formulaire
+    $numero_acte_mariage = trim($post_data['numero_acte_mariage'] ?? '');
+    $date_celebration = trim($post_data['date_celebration'] ?? '');
+    $heure_celebration = trim($post_data['heure_celebration'] ?? '');
+    $id_epoux = filter_var($post_data['id_epoux'] ?? '', FILTER_VALIDATE_INT);
+    $id_epouse = filter_var($post_data['id_epouse'] ?? '', FILTER_VALIDATE_INT);
+    $regime_matrimonial = trim($post_data['regime_matrimonial'] ?? '');
+    $nom_complet_temoin_1 = trim($post_data['nom_complet_temoin_1'] ?? '');
+    $nom_complet_temoin_2 = trim($post_data['nom_complet_temoin_2'] ?? '');
+
+    // L'officier et la commune sont déterminés par l'utilisateur connecté
+    $id_officier_celebration = $session_data['user_id'] ?? null;
+    $id_commune_celebration = $session_data['id_commune'] ?? null;
+    
+    // Validation
+    if (empty($numero_acte_mariage)) $errors[] = "Le numéro d'acte est requis.";
+    if (empty($date_celebration)) $errors[] = "La date de célébration est requise.";
+    if (empty($heure_celebration)) $errors[] = "L'heure de célébration est requise.";
+    if (!$id_epoux) $errors[] = "L'époux est invalide.";
+    if (!$id_epouse) $errors[] = "L'épouse est invalide.";
+    if ($id_epoux === $id_epouse) $errors[] = "L'époux et l'épouse ne peuvent pas être la même personne.";
+    if (empty($regime_matrimonial)) $errors[] = "Le régime matrimonial est requis.";
+    if (!$id_officier_celebration) $errors[] = "Impossible de récupérer l'officier de célébration (session invalide).";
+    if (!$id_commune_celebration) $errors[] = "Impossible de récupérer la commune de célébration (session invalide).";
+    if (empty($nom_complet_temoin_1)) $errors[] = "Le nom du témoin 1 est requis.";
+    if (empty($nom_complet_temoin_2)) $errors[] = "Le nom du témoin 2 est requis.";
+
+    // Vérifier l'unicité du numéro d'acte
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM mariages WHERE numero_acte_mariage = :num");
+            $stmt->execute(['num' => $numero_acte_mariage]);
+            if ($stmt->fetchColumn() > 0) {
+                $errors[] = "Ce numéro d'acte de mariage existe déjà.";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Erreur de base de données : " . $e->getMessage();
+        }
+    }
+    
+    if (empty($errors)) {
+        $pdo->beginTransaction();
+        try {
+            // Insérer dans la table `mariages`
+            $stmt = $pdo->prepare("
+                INSERT INTO mariages (
+                    numero_acte_mariage, date_celebration, heure_celebration,
+                    id_officier_celebration, id_commune_celebration,
+                    nom_complet_temoin_1, nom_complet_temoin_2, regime_matrimonial
+                ) VALUES (
+                    :numero_acte_mariage, :date_celebration, :heure_celebration,
+                    :id_officier_celebration, :id_commune_celebration,
+                    :nom_complet_temoin_1, :nom_complet_temoin_2, :regime_matrimonial
+                )
+            ");
+            $stmt->execute([
+                'numero_acte_mariage' => $numero_acte_mariage,
+                'date_celebration' => $date_celebration,
+                'heure_celebration' => $heure_celebration,
+                'id_officier_celebration' => $id_officier_celebration,
+                'id_commune_celebration' => $id_commune_celebration,
+                'nom_complet_temoin_1' => $nom_complet_temoin_1,
+                'nom_complet_temoin_2' => $nom_complet_temoin_2,
+                'regime_matrimonial' => $regime_matrimonial,
+            ]);
+            $id_mariage = $pdo->lastInsertId();
+
+            // Insérer l'époux dans `epoux_mariage`
+            $stmt = $pdo->prepare("
+                INSERT INTO epoux_mariage (id_mariage, id_personne, type_role)
+                VALUES (:id_mariage, :id_personne, 'époux')
+            ");
+            $stmt->execute(['id_mariage' => $id_mariage, 'id_personne' => $id_epoux]);
+
+            // Insérer l'épouse dans `epoux_mariage`
+            $stmt = $pdo->prepare("
+                INSERT INTO epoux_mariage (id_mariage, id_personne, type_role)
+                VALUES (:id_mariage, :id_personne, 'épouse')
+            ");
+            $stmt->execute(['id_mariage' => $id_mariage, 'id_personne' => $id_epouse]);
+
+            $pdo->commit();
+            return ['success' => true, 'message' => 'Mariage ajouté avec succès.'];
+
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            $errors[] = "Erreur lors de l'enregistrement du mariage: " . $e->getMessage();
+        }
+    }
+
+    return ['success' => false, 'errors' => $errors];
+}
+
+function editMariage(PDO $pdo, int $id_mariage, array $post_data, array $session_data): array {
+    $errors = [];
+
+    // Extraction et validation
+    $numero_acte_mariage = trim($post_data['numero_acte_mariage'] ?? '');
+    $date_celebration = trim($post_data['date_celebration'] ?? '');
+    $heure_celebration = trim($post_data['heure_celebration'] ?? '');
+    $id_epoux = filter_var($post_data['id_epoux'] ?? '', FILTER_VALIDATE_INT);
+    $id_epouse = filter_var($post_data['id_epouse'] ?? '', FILTER_VALIDATE_INT);
+    $regime_matrimonial = trim($post_data['regime_matrimonial'] ?? '');
+    $nom_complet_temoin_1 = trim($post_data['nom_complet_temoin_1'] ?? '');
+    $nom_complet_temoin_2 = trim($post_data['nom_complet_temoin_2'] ?? '');
+
+    $id_officier_celebration = $session_data['user_id'] ?? null;
+    $id_commune_celebration = $session_data['id_commune'] ?? null;
+
+    if (empty($numero_acte_mariage)) $errors[] = "Le numéro d'acte est requis.";
+    if (empty($date_celebration)) $errors[] = "La date de célébration est requise.";
+    if (empty($heure_celebration)) $errors[] = "L'heure de célébration est requise.";
+    if (!$id_epoux) $errors[] = "L'époux est invalide.";
+    if (!$id_epouse) $errors[] = "L'épouse est invalide.";
+    if (empty($regime_matrimonial)) $errors[] = "Le régime matrimonial est requis.";
+    if (!$id_officier_celebration) $errors[] = "L'officier de célébration est invalide.";
+    if (!$id_commune_celebration) $errors[] = "La commune de célébration est invalide.";
+
+    // Vérifier l'unicité du numéro d'acte (sauf pour le mariage actuel)
+    if (empty($errors)) {
+        try {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM mariages WHERE numero_acte_mariage = :num AND id_mariage != :id");
+            $stmt->execute(['num' => $numero_acte_mariage, 'id' => $id_mariage]);
+            if ($stmt->fetchColumn() > 0) {
+                $errors[] = "Ce numéro d'acte de mariage est déjà utilisé par un autre mariage.";
+            }
+        } catch (PDOException $e) {
+            $errors[] = "Erreur de base de données : " . $e->getMessage();
+        }
+    }
+
+    if (empty($errors)) {
+        $pdo->beginTransaction();
+        try {
+            // Mettre à jour la table `mariages`
+            $stmt = $pdo->prepare("
+                UPDATE mariages SET
+                    numero_acte_mariage = :numero_acte_mariage,
+                    date_celebration = :date_celebration,
+                    heure_celebration = :heure_celebration,
+                    id_officier_celebration = :id_officier_celebration,
+                    id_commune_celebration = :id_commune_celebration,
+                    nom_complet_temoin_1 = :nom_complet_temoin_1,
+                    nom_complet_temoin_2 = :nom_complet_temoin_2,
+                    regime_matrimonial = :regime_matrimonial,
+                    date_mise_a_jour = NOW()
+                WHERE id_mariage = :id_mariage
+            ");
+            $stmt->execute([
+                'numero_acte_mariage' => $numero_acte_mariage,
+                'date_celebration' => $date_celebration,
+                'heure_celebration' => $heure_celebration,
+                'id_officier_celebration' => $id_officier_celebration,
+                'id_commune_celebration' => $id_commune_celebration,
+                'nom_complet_temoin_1' => $nom_complet_temoin_1,
+                'nom_complet_temoin_2' => $nom_complet_temoin_2,
+                'regime_matrimonial' => $regime_matrimonial,
+                'id_mariage' => $id_mariage
+            ]);
+
+            // Mettre à jour les époux (supprimer les anciens et insérer les nouveaux)
+            $stmt = $pdo->prepare("DELETE FROM epoux_mariage WHERE id_mariage = :id_mariage");
+            $stmt->execute(['id_mariage' => $id_mariage]);
+
+            $stmt_epoux = $pdo->prepare("INSERT INTO epoux_mariage (id_mariage, id_personne, type_role) VALUES (:id_mariage, :id_personne, 'époux')");
+            $stmt_epoux->execute(['id_mariage' => $id_mariage, 'id_personne' => $id_epoux]);
+
+            $stmt_epouse = $pdo->prepare("INSERT INTO epoux_mariage (id_mariage, id_personne, type_role) VALUES (:id_mariage, :id_personne, 'épouse')");
+            $stmt_epouse->execute(['id_mariage' => $id_mariage, 'id_personne' => $id_epouse]);
+
+            $pdo->commit();
+            return ['success' => true, 'message' => 'Mariage modifié avec succès.'];
+
+        } catch (PDOException $e) {
+            $pdo->rollBack();
+            $errors[] = "Erreur lors de la modification du mariage: " . $e->getMessage();
+        }
+    }
+
+    return ['success' => false, 'errors' => $errors];
+}
+
+function getAllMariages(PDO $pdo, string $search = '', int $limit = 50, int $offset = 0): array {
+    try {
+        $params = [];
+        $where_clause = '';
+
+        if (!empty($search)) {
+            $where_clause = "WHERE m.numero_acte_mariage LIKE :search 
+                            OR p_epoux.nom LIKE :search OR p_epoux.prenom LIKE :search
+                            OR p_epouse.nom LIKE :search OR p_epouse.prenom LIKE :search
+                            OR o.nom LIKE :search OR o.prenom LIKE :search
+                            OR c.nom_commune LIKE :search";
+            $params['search'] = '%' . $search . '%';
+        }
+
+        $sql = "
+            SELECT 
+                m.id_mariage,
+                m.numero_acte_mariage,
+                m.date_celebration,
+                m.heure_celebration,
+                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
+                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
+                CONCAT(o.prenom, ' ', o.nom) as nom_officier,
+                c.nom_commune
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            {$where_clause}
+            ORDER BY m.date_celebration DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $count_sql = "SELECT COUNT(m.id_mariage) as total 
+                    FROM mariages m
+                    LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+                    LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+                    LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+                    LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+                    LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
+                    LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+                    {$where_clause}";
+        $count_stmt = $pdo->prepare($count_sql);
+        foreach ($params as $key => $value) {
+            $count_stmt->bindValue(':' . $key, $value);
+        }
+        $count_stmt->execute();
+        $total_count = $count_stmt->fetch()['total'];
+
+        return [
+            'success' => true,
+            'data' => $mariages,
+            'total_count' => $total_count,
+            'current_count' => count($mariages)
+        ];
+
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération des mariages: ' . $e->getMessage(),
+            'data' => [], 'total_count' => 0, 'current_count' => 0
+        ];
+    }
+}
+
+function getMariage(PDO $pdo, int $id_mariage): array {
+    try {
+        $sql = "
+            SELECT 
+                m.*,
+                em_epoux.id_personne as id_epoux,
+                em_epouse.id_personne as id_epouse
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            WHERE m.id_mariage = :id_mariage
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['id_mariage' => $id_mariage]);
+        $mariage = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($mariage) {
+            return ['success' => true, 'data' => $mariage];
+        } else {
+            return ['success' => false, 'error' => 'Mariage non trouvé.'];
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => 'Erreur de base de données: ' . $e->getMessage()];
+    }
+}
+
+function deleteMariage(PDO $pdo, int $id_mariage): array {
+    try {
+        // La suppression en cascade est définie dans la BDD pour `epoux_mariage`
+        $stmt = $pdo->prepare("DELETE FROM mariages WHERE id_mariage = :id_mariage");
+        $stmt->execute(['id_mariage' => $id_mariage]);
+
+        if ($stmt->rowCount() > 0) {
+            return ['success' => true, 'message' => 'Mariage supprimé avec succès.'];
+        } else {
+            return ['success' => false, 'errors' => ['Mariage non trouvé ou déjà supprimé.']];
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'errors' => ['Erreur lors de la suppression: ' . $e->getMessage()]];
+    }
+}
+
+function getPersonsByType(PDO $pdo, string $type): array {
+    try {
+        $stmt = $pdo->prepare("SELECT id_personne, CONCAT(prenom, ' ', nom) as nom_complet FROM personnes WHERE type_personne = :type ORDER BY nom_complet ASC");
+        $stmt->execute(['type' => $type]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        return [];
     }
 }

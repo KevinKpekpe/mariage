@@ -1,83 +1,37 @@
-<!DOCTYPE html>
-<html lang="fr">
+<?php
+require_once __DIR__ . '/../header.php';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-    <title>Registre Mariages Civils - Nouveau Mariage</title>
-    <link rel="stylesheet" href="/admin/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-</head>
+// Récupérer les listes de personnes (hommes et femmes)
+$hommes = getPersonsByType($pdo, 'homme');
+$femmes = getPersonsByType($pdo, 'femme');
 
-<body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-diamond"></div>
-                <div class="logo-text">Mariage</div>
-            </div>
-        </div>
+// Récupérer la commune de l'officier connecté
+$commune_officier = '';
+if (isset($_SESSION['id_commune'])) {
+    $stmt = $pdo->prepare("SELECT nom_commune FROM communes WHERE id_commune = :id");
+    $stmt->execute(['id' => $_SESSION['id_commune']]);
+    $result = $stmt->fetch();
+    if ($result) {
+        $commune_officier = $result['nom_commune'];
+    }
+}
 
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <div class="nav-section-title">Menu Principal</div>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-                    Dashboard
-                </a>
-                <a href="#" class="nav-item active">
-                    <span class="nav-icon"><i class="fas fa-heart"></i></span>
-                    Mariages
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-users"></i></span>
-                    Personnes
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-user-tie"></i></span>
-                    Officiers
-                </a>
-            </div>
+// Traitement du formulaire
+$errors = [];
+$success_message = '';
 
-            <div class="nav-section">
-                <div class="nav-section-title">Gestion</div>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-city"></i></span>
-                    Communes
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-handshake"></i></span>
-                    Parents
-                </a>
-                <a href="#" class="nav-item">
-                    <span class="nav-icon"><i class="fas fa-file-signature"></i></span>
-                    Témoins
-                </a>
-            </div>
-        </nav>
-    </div>
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $result = addMariage($pdo, $_POST, $_SESSION);
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Header -->
-        <header class="header">
-            <h1 class="header-title">Nouveau Mariage</h1>
-            <div class="header-actions">
-                <div class="search-box">
-                    <input type="text" class="search-input" placeholder="Rechercher...">
-                    <span class="search-icon"><i class="fas fa-search"></i></span>
-                </div>
-                <div class="user-profile">
-                    <div class="user-avatar">OC</div>
-                    <span>Officier Civil</span>
-                </div>
-            </div>
-        </header>
-
+    if ($result['success']) {
+        // Redirection pour éviter la resoumission du formulaire
+        header('Location: mariages.php?success=add');
+        exit;
+    } else {
+        $errors = $result['errors'];
+    }
+}
+?>
         <!-- Page Content -->
         <div class="page-content">
             <!-- Page Header -->
@@ -138,14 +92,22 @@
                                     <label class="form-label">Époux <span class="required">*</span></label>
                                     <select class="form-select" name="id_epoux" required>
                                         <option value="">Sélectionner l'époux</option>
-                                        <!-- Options seront chargées dynamiquement depuis la base de données -->
+                                        <?php foreach ($hommes as $homme): ?>
+                                            <option value="<?php echo htmlspecialchars($homme['id_personne']); ?>">
+                                                <?php echo htmlspecialchars($homme['nom_complet']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Épouse <span class="required">*</span></label>
                                     <select class="form-select" name="id_epouse" required>
                                         <option value="">Sélectionner l'épouse</option>
-                                        <!-- Options seront chargées dynamiquement depuis la base de données -->
+                                        <?php foreach ($femmes as $femme): ?>
+                                            <option value="<?php echo htmlspecialchars($femme['id_personne']); ?>">
+                                                <?php echo htmlspecialchars($femme['nom_complet']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
                                     </select>
                                 </div>
                             </div>
@@ -159,29 +121,44 @@
                             </div>
                             <div class="form-grid">
                                 <div class="form-group">
-                                    <label class="form-label">Officier de célébration <span class="required">*</span></label>
-                                    <select class="form-select" name="id_officier_celebration" required>
-                                        <option value="">Sélectionner l'officier</option>
-                                        <!-- Options seront chargées dynamiquement depuis la base de données -->
-                                    </select>
+                                    <label class="form-label">Officier de célébration</label>
+                                    <input type="text" class="form-input" value="<?php echo htmlspecialchars($prenom . ' ' . $nom); ?>" readonly>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Commune de célébration <span class="required">*</span></label>
-                                    <select class="form-select" name="id_commune_celebration" required>
-                                        <option value="">Sélectionner la commune</option>
-                                        <!-- Options seront chargées dynamiquement depuis la base de données -->
-                                    </select>
+                                    <label class="form-label">Commune de célébration</label>
+                                    <input type="text" class="form-input" value="<?php echo htmlspecialchars($commune_officier); ?>" readonly>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Régime matrimonial</label>
-                                    <input type="text" class="form-input" name="regime_matrimonial" placeholder="Ex: Communauté réduite aux acquêts">
+                                    <select class="form-select" name="regime_matrimonial" required>
+                                        <option value="">Sélectionner le régime matrimonial</option>
+                                        <option value="communauté réduite aux acquêts">Communauté réduite aux acquêts</option>
+                                        <option value="communauté de biens">Communauté de biens</option>
+                                        <option value="séparation de biens">Séparation de biens</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <div class="section-title">
+                                <span class="section-icon"><i class="fas fa-file-alt"></i></span>
+                                Informations Sur les Témoins
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Nom Complet du Témoin 1  <span class="required">*</span></label>
+                                    <input type="text" class="form-input" name="nom_complet_temoin_1" required placeholder="Ex: Nom et Prénom du Témoin 1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Nom Complet du Témoin 2  <span class="required">*</span></label>
+                                    <input type="text" class="form-input" name="nom_complet_temoin_2" required placeholder="Ex: Nom et Prénom du Témoin 2">
                                 </div>
                             </div>
                         </div>
 
                         <!-- Form Actions -->
                         <div class="form-actions">
-                            <a href="#" class="btn btn-outline">
+                            <a href="mariages.php" class="btn btn-outline">
                                 Annuler
                             </a>
                             <button type="submit" class="btn btn-primary">
