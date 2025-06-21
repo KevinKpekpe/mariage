@@ -1,3 +1,10 @@
+<?php
+require_once 'db.php';
+require_once 'functions.php';
+
+// Récupérer les mariages récents pour la page d'accueil
+$recent_mariages = getRecentMariages($pdo, 3);
+?>
 <!DOCTYPE html>
 <html lang="fr">
 
@@ -77,42 +84,51 @@
         <div class="container">
             <h2 class="section-title">Annonces Récentes</h2>
             <div class="announcements-grid">
-                <!-- Ces éléments seront générés dynamiquement par PHP -->
-                <div class="announcement-card">
-                    <div class="announcement-image">
-                        <img src="./images/mariage.jpg" alt="Sarah Mutombo & Jean Mukendi">
+                <?php if ($recent_mariages['success'] && !empty($recent_mariages['data'])): ?>
+                    <?php foreach ($recent_mariages['data'] as $mariage): ?>
+                        <div class="announcement-card">
+                            <div class="announcement-photos">
+                                <div class="photo-container">
+                                    <?php if (!empty($mariage['photo_epoux'])): ?>
+                                        <img src="<?php echo htmlspecialchars($mariage['photo_epoux']); ?>" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epoux']); ?>">
+                                    <?php else: ?>
+                                        <img src="./images/person1.jpg" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epoux']); ?>">
+                                    <?php endif; ?>
+                                </div>
+                                <div class="photo-container">
+                                    <?php if (!empty($mariage['photo_epouse'])): ?>
+                                        <img src="<?php echo htmlspecialchars($mariage['photo_epouse']); ?>" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epouse']); ?>">
+                                    <?php else: ?>
+                                        <img src="./images/person2.jpg" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epouse']); ?>">
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="announcement-date"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                            <div class="announcement-details">
+                                <h3><?php echo htmlspecialchars($mariage['nom_epoux'] . ' & ' . $mariage['nom_epouse']); ?></h3>
+                                <p>Maison Communale de <?php echo htmlspecialchars($mariage['nom_commune']); ?></p>
+                                <p>Célébration prévue le <?php echo formatDate($mariage['date_celebration']); ?> à <?php echo htmlspecialchars($mariage['heure_celebration']); ?></p>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="announcement-card">
+                        <div class="announcement-photos">
+                            <div class="photo-container">
+                                <img src="./images/person1.jpg" alt="Photo de Personne 1">
+                            </div>
+                            <div class="photo-container">
+                                <img src="./images/person2.jpg" alt="Photo de Personne 2">
+                            </div>
+                        </div>
                         <div class="announcement-date">15/05/2025</div>
+                        <div class="announcement-details">
+                            <h3>Nom Personne 1 & Nom Personne 2</h3>
+                            <p>Maison Communale de Ville</p>
+                            <p>Célébration prévue le 15/05/2025 à 10h00</p>
+                        </div>
                     </div>
-                    <div class="announcement-details">
-                        <h3>Sarah Mutombo & Jean Mukendi</h3>
-                        <p>Maison Communale de Kinshasa</p>
-                        <p>Célébration prévue le 15/05/2025 à 10h00</p>
-                    </div>
-                </div>
-
-                <div class="announcement-card">
-                    <div class="announcement-image">
-                        <img src="./images/mariage.jpg" alt="Marie Ngalula & Paul Ilunga">
-                        <div class="announcement-date">22/05/2025</div>
-                    </div>
-                    <div class="announcement-details">
-                        <h3>Marie Ngalula & Paul Ilunga</h3>
-                        <p>Maison Communale de Lubumbashi</p>
-                        <p>Célébration prévue le 22/05/2025 à 14h30</p>
-                    </div>
-                </div>
-
-                <div class="announcement-card">
-                    <div class="announcement-image">
-                        <img src="./images/mariage.jpg" alt="Sophie Nkandu & Marc Lukeba">
-                        <div class="announcement-date">28/05/2025</div>
-                    </div>
-                    <div class="announcement-details">
-                        <h3>Sophie Nkandu & Marc Lukeba</h3>
-                        <p>Maison Communale de Goma</p>
-                        <p>Célébration prévue le 28/05/2025 à 11h00</p>
-                    </div>
-                </div>
+                <?php endif; ?>
             </div>
         </div>
     </section>

@@ -1,3 +1,18 @@
+<?php
+require_once 'db.php';
+require_once 'functions.php';
+
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 12;
+$offset = ($page - 1) * $limit;
+
+// Récupérer les mariages pour les annonces
+$result = getMariagesForAnnouncements($pdo, $limit, $offset);
+$mariages = $result['data'];
+$total_count = $result['total_count'];
+$total_pages = ceil($total_count / $limit);
+?>
 <!DOCTYPE html>
 <html lang="fr">
 
@@ -39,73 +54,69 @@
             <h2 class="section-title">Annonces de Mariages à Venir</h2>
 
             <div class="search-block">
-                <form action="verification.html" method="GET">
+                <form action="verification.php" method="GET">
                     <input type="text" name="search" placeholder="Rechercher une personne...">
                     <button type="submit">Vérifier</button>
                 </form>
             </div>
 
-            <div class="announcements-grid">
-                <div class="announcement-card">
-                    <div class="announcement-photos">
-                        <div class="photo-container">
-                            <img src="./images/person1.jpg" alt="Photo de Personne 1">
+            <?php if ($result['success'] && !empty($mariages)): ?>
+                <div class="announcements-grid">
+                    <?php foreach ($mariages as $mariage): ?>
+                        <div class="announcement-card">
+                            <div class="announcement-photos">
+                                <div class="photo-container">
+                                    <?php if (!empty($mariage['photo_epoux'])): ?>
+                                        <img src="<?php echo htmlspecialchars($mariage['photo_epoux']); ?>" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epoux']); ?>">
+                                    <?php else: ?>
+                                        <img src="./images/person1.jpg" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epoux']); ?>">
+                                    <?php endif; ?>
+                                </div>
+                                <div class="photo-container">
+                                    <?php if (!empty($mariage['photo_epouse'])): ?>
+                                        <img src="<?php echo htmlspecialchars($mariage['photo_epouse']); ?>" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epouse']); ?>">
+                                    <?php else: ?>
+                                        <img src="./images/person2.jpg" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epouse']); ?>">
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="announcement-date"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                            <div class="announcement-details">
+                                <h3><?php echo htmlspecialchars($mariage['nom_epoux'] . ' & ' . $mariage['nom_epouse']); ?></h3>
+                                <p>Maison Communale de <?php echo htmlspecialchars($mariage['nom_commune']); ?></p>
+                                <p>Célébration prévue le <?php echo formatDate($mariage['date_celebration']); ?> à <?php echo htmlspecialchars($mariage['heure_celebration']); ?></p>
+                                <div class="objection-link">
+                                    <a href="objection.php?id=<?php echo $mariage['id_mariage']; ?>">Faire une objection</a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="photo-container">
-                            <img src="./images/person2.jpg" alt="Photo de Personne 2">
-                        </div>
-                    </div>
-                    <div class="announcement-date">15/05/2025</div>
-                    <div class="announcement-details">
-                        <h3>Nom Personne 1 & Nom Personne 2</h3>
-                        <p>Maison Communale de Ville</p>
-                        <p>Célébration prévue le 15/05/2025 à 10h00</p>
-                        <div class="objection-link">
-                            <a href="objection.html">Faire une objection</a>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
 
-                <div class="announcement-card">
-                    <div class="announcement-photos">
-                        <div class="photo-container">
-                            <img src="./images/person1.jpg" alt="Photo de Personne 1">
-                        </div>
-                        <div class="photo-container">
-                            <img src="./images/person2.jpg" alt="Photo de Personne 2">
-                        </div>
-                    </div>
-                    <div class="announcement-date">22/05/2025</div>
-                    <div class="announcement-details">
-                        <h3>Nom Personne 3 & Nom Personne 4</h3>
-                        <p>Maison Communale de Ville</p>
-                        <p>Célébration prévue le 22/05/2025 à 14h30</p>
-                        <div class="objection-link">
-                            <a href="objection.html">Faire une objection</a>
-                        </div>
-                    </div>
-                </div>
+                <!-- Pagination -->
+                <?php if ($total_pages > 1): ?>
+                    <div class="pagination">
+                        <?php if ($page > 1): ?>
+                            <a href="?page=<?php echo $page - 1; ?>" class="pagination-btn">Précédent</a>
+                        <?php endif; ?>
 
-                <div class="announcement-card">
-                    <div class="announcement-photos">
-                    <div class="photo-container">
-                            <img src="./images/person1.jpg" alt="Photo de Personne 1">
-                        </div>
-                        <div class="photo-container">
-                            <img src="./images/person2.jpg" alt="Photo de Personne 2">
-                        </div>  
+                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                            <a href="?page=<?php echo $i; ?>" class="pagination-btn <?php echo $i === $page ? 'active' : ''; ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $total_pages): ?>
+                            <a href="?page=<?php echo $page + 1; ?>" class="pagination-btn">Suivant</a>
+                        <?php endif; ?>
                     </div>
-                    <div class="announcement-date">28/05/2025</div>
-                    <div class="announcement-details">
-                        <h3>Nom Personne 5 & Nom Personne 6</h3>
-                        <p>Maison Communale de Ville</p>
-                        <p>Célébration prévue le 28/05/2025 à 11h00</p>
-                        <div class="objection-link">
-                            <a href="objection.html">Faire une objection</a>
-                        </div>
-                    </div>
+                <?php endif; ?>
+            <?php else: ?>
+                <div class="no-announcements">
+                    <h3>Aucun mariage à venir</h3>
+                    <p>Il n'y a actuellement aucun mariage prévu dans notre registre.</p>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
     </section>
 

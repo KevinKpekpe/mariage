@@ -1,3 +1,19 @@
+<?php
+require_once 'db.php';
+require_once 'functions.php';
+
+$search = $_GET['search'] ?? '';
+$search_results = [];
+$has_searched = false;
+
+if (!empty($search)) {
+    $has_searched = true;
+    $result = searchPersonInMariages($pdo, $search);
+    if ($result['success']) {
+        $search_results = $result['data'];
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 
@@ -46,21 +62,60 @@
 
             <div class="verification-form">
                 <h3>Rechercher une personne</h3>
-                <form action="verification.html" method="GET">
+                <form action="verification.php" method="GET">
                     <div class="form-group">
                         <label for="search">Nom, prénom ou numéro d'identité:</label>
-                        <input type="text" id="search" name="search" value="">
+                        <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>">
                     </div>
                     <button type="submit">Rechercher</button>
                 </form>
             </div>
 
-            <div class="search-results">
-                <div class="no-results">
-                    <h3>Aucun résultat trouvé</h3>
-                    <p>Aucune personne correspondant à votre recherche n'a été trouvée dans notre registre.</p>
+            <?php if ($has_searched): ?>
+                <div class="search-results">
+                    <?php if (!empty($search_results)): ?>
+                        <h3>Résultats de la recherche pour "<?php echo htmlspecialchars($search); ?>"</h3>
+                        <div class="announcements-grid">
+                            <?php foreach ($search_results as $mariage): ?>
+                                <div class="announcement-card">
+                                    <div class="announcement-photos">
+                                        <div class="photo-container">
+                                            <?php if (!empty($mariage['photo_epoux'])): ?>
+                                                <img src="<?php echo htmlspecialchars($mariage['photo_epoux']); ?>" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epoux']); ?>">
+                                            <?php else: ?>
+                                                <img src="./images/person1.jpg" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epoux']); ?>">
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="photo-container">
+                                            <?php if (!empty($mariage['photo_epouse'])): ?>
+                                                <img src="<?php echo htmlspecialchars($mariage['photo_epouse']); ?>" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epouse']); ?>">
+                                            <?php else: ?>
+                                                <img src="./images/person2.jpg" alt="Photo de <?php echo htmlspecialchars($mariage['nom_epouse']); ?>">
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="announcement-date"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                                    <div class="announcement-details">
+                                        <h3><?php echo htmlspecialchars($mariage['nom_epoux'] . ' & ' . $mariage['nom_epouse']); ?></h3>
+                                        <p><strong>Acte N°:</strong> <?php echo htmlspecialchars($mariage['numero_acte_mariage']); ?></p>
+                                        <p><strong>Commune:</strong> <?php echo htmlspecialchars($mariage['nom_commune']); ?></p>
+                                        <p><strong>Statut:</strong> 
+                                            <span class="status-badge <?php echo $mariage['etat_acte']; ?>">
+                                                <?php echo ucfirst($mariage['etat_acte']); ?>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-results">
+                            <h3>Aucun résultat trouvé</h3>
+                            <p>Aucune personne correspondant à votre recherche n'a été trouvée dans notre registre.</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            </div>
+            <?php endif; ?>
         </div>
     </section>
 

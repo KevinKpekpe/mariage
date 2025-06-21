@@ -1155,3 +1155,126 @@ function getMariageDetails(PDO $pdo, int $id_mariage): array {
         return ['success' => false, 'error' => 'Erreur de base de données: ' . $e->getMessage()];
     }
 }
+
+// Fonctions pour le frontend public
+function getRecentMariages(PDO $pdo, int $limit = 3): array {
+    try {
+        $sql = "
+            SELECT 
+                m.id_mariage,
+                m.numero_acte_mariage,
+                m.date_celebration,
+                m.heure_celebration,
+                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
+                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
+                c.nom_commune,
+                p_epoux.photo as photo_epoux,
+                p_epouse.photo as photo_epouse
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            WHERE m.date_publication_annonce >= CURDATE()
+            ORDER BY m.date_publication_annonce ASC
+            LIMIT :limit
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return ['success' => true, 'data' => $mariages];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => 'Erreur lors de la récupération des mariages récents: ' . $e->getMessage()];
+    }
+}
+
+function getMariagesForAnnouncements(PDO $pdo, int $limit = 20, int $offset = 0): array {
+    try {
+        $sql = "
+            SELECT 
+                m.id_mariage,
+                m.numero_acte_mariage,
+                m.date_celebration,
+                m.heure_celebration,
+                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
+                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
+                c.nom_commune,
+                p_epoux.photo as photo_epoux,
+                p_epouse.photo as photo_epouse
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            WHERE m.date_celebration >= CURDATE()
+            ORDER BY m.date_celebration ASC
+            LIMIT :limit OFFSET :offset
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Compter le total
+        $count_sql = "
+            SELECT COUNT(*) as total
+            FROM mariages m
+            WHERE m.date_celebration >= CURDATE()
+        ";
+        $count_stmt = $pdo->prepare($count_sql);
+        $count_stmt->execute();
+        $total_count = $count_stmt->fetch()['total'];
+        
+        return [
+            'success' => true, 
+            'data' => $mariages,
+            'total_count' => $total_count
+        ];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => 'Erreur lors de la récupération des annonces: ' . $e->getMessage()];
+    }
+}
+
+function searchPersonInMariages(PDO $pdo, string $search): array {
+    try {
+        $sql = "
+            SELECT 
+                m.id_mariage,
+                m.numero_acte_mariage,
+                m.date_celebration,
+                m.heure_celebration,
+                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
+                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
+                c.nom_commune,
+                p_epoux.photo as photo_epoux,
+                p_epouse.photo as photo_epouse,
+                m.etat_acte
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            WHERE (p_epoux.nom LIKE :search OR p_epoux.prenom LIKE :search OR p_epouse.nom LIKE :search OR p_epouse.prenom LIKE :search)
+            ORDER BY m.date_celebration DESC
+        ";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['search' => '%' . $search . '%']);
+        $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return ['success' => true, 'data' => $mariages];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => 'Erreur lors de la recherche: ' . $e->getMessage()];
+    }
+}
