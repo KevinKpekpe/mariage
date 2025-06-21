@@ -8,12 +8,12 @@ require_once 'db.php';
 
 try {    
     // Données de l'officier à insérer
-    $nom = 'Dupont';
-    $prenom = 'Jean';
-    $email = 'jean.dupont@example.com';
-    $mot_de_passe_clair = 'your_password';
+    $nom = 'Kabongo';
+    $prenom = 'Kabongo';
+    $email = 'kabongo@example.com';
+    $mot_de_passe_clair = 'kabongo';
     $id_commune = 1;
-    $role = 'admin';
+    $role = 'officier_communal';
     
     // Hachage du mot de passe
     $mot_de_passe_hash = password_hash($mot_de_passe_clair, PASSWORD_DEFAULT);
