@@ -109,6 +109,9 @@ if (isset($_GET['success'])) {
                                         <td><?php echo htmlspecialchars($mariage['nom_commune']); ?></td>
                                         <td>
                                             <div class="actions-cell">
+                                                <button class="action-btn view" title="Voir les détails" onclick="viewMariage(<?php echo $mariage['id_mariage']; ?>)">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
                                                 <a href="modifier_mariage.php?id=<?php echo $mariage['id_mariage']; ?>" class="action-btn edit" title="Modifier">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
@@ -160,4 +163,10 @@ if (isset($_GET['success'])) {
         </div>
     </div>
 </body>
+
+<script>
+    function viewMariage(id) {
+        window.location.href = `/admin/mariages/voir_mariage.php?id=${id}`;
+    }
+</script>
 </html>

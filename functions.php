@@ -1110,3 +1110,48 @@ function getPersonsByType(PDO $pdo, string $type): array {
         return [];
     }
 }
+
+function getMariageDetails(PDO $pdo, int $id_mariage): array {
+    try {
+        $sql = "
+            SELECT 
+                m.*,
+                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_complet_epoux,
+                p_epoux.date_naissance as date_naissance_epoux,
+                p_epoux.lieu_naissance as lieu_naissance_epoux,
+                p_epoux.nationalite as nationalite_epoux,
+                p_epoux.profession as profession_epoux,
+                p_epoux.adresse_actuelle as adresse_epoux,
+                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_complet_epouse,
+                p_epouse.date_naissance as date_naissance_epouse,
+                p_epouse.lieu_naissance as lieu_naissance_epouse,
+                p_epouse.nationalite as nationalite_epouse,
+                p_epouse.profession as profession_epouse,
+                p_epouse.adresse_actuelle as adresse_epouse,
+                CONCAT(o.prenom, ' ', o.nom) as nom_complet_officier,
+                o.matricule as matricule_officier,
+                c.nom_commune,
+                c.district,
+                c.province
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            WHERE m.id_mariage = :id_mariage
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute(['id_mariage' => $id_mariage]);
+        $mariage = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($mariage) {
+            return ['success' => true, 'data' => $mariage];
+        } else {
+            return ['success' => false, 'error' => 'Mariage non trouvé.'];
+        }
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => 'Erreur de base de données: ' . $e->getMessage()];
+    }
+}

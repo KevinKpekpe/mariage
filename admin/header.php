@@ -61,22 +61,6 @@ $role_display = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
             </a>
         <?php endif; ?>
     </div>
-
-    <div class="nav-section">
-        <div class="nav-section-title">Gestion</div>
-        <a href="/admin/communes/communes.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) === 'communes.php' ? 'active' : ''; ?>">
-            <span class="nav-icon"><i class="fas fa-city"></i></span>
-            Communes
-        </a>
-        <a href="#" class="nav-item">
-            <span class="nav-icon"><i class="fas fa-handshake"></i></span>
-            Parents
-        </a>
-        <a href="#" class="nav-item">
-            <span class="nav-icon"><i class="fas fa-file-signature"></i></span>
-            Témoins
-        </a>
-    </div>
 </nav>
 
     </div>
@@ -95,7 +79,7 @@ $role_display = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
                     <div class="user-avatar"><?php echo htmlspecialchars($user_initials); ?></div>
                     <span><?php echo htmlspecialchars($prenom . ' ' . $nom); ?> (<?php echo htmlspecialchars($role_display); ?>)</span>
                 </div>
-                <a href="logout.php" class="logout-button">
+                <a href="/admin/logout.php" class="logout-button">
                     <i class="fas fa-sign-out-alt"></i>
                 </a>
             </div>
