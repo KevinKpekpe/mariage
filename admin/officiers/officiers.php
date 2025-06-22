@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../header.php'; 
 
-function getOfficierInitials(string $nom, string $prenom): string {
+function obtenirInitialesOfficier(string $nom, string $prenom): string {
     $nom_initial = !empty($nom) ? strtoupper(substr($nom, 0, 1)) : '';
     $prenom_initial = !empty($prenom) ? strtoupper(substr($prenom, 0, 1)) : '';
     return $nom_initial . $prenom_initial;
@@ -11,7 +11,7 @@ $search = $_GET['search'] ?? '';
 $limit = 50;
 $offset = 0; 
 
-$officiersData = getAllOfficiers($pdo, $search, $limit, $offset);
+$officiersData = obtenirTousOfficiers($pdo, $search, $limit, $offset);
 
 $officiers = $officiersData['data'];
 $totalOfficiers = $officiersData['total_count'];
@@ -19,7 +19,7 @@ $errorMessage = $officiersData['error'] ?? null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $id_to_delete = (int) $_POST['delete_id'];
-    $delete_result = deleteOfficier($pdo, $id_to_delete);
+    $delete_result = supprimerOfficier($pdo, $id_to_delete);
 
     if ($delete_result['success']) {
         header('Location: officiers.php');
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
                         <tr>
                             <td>
                                 <div class="person-photo placeholder">
-                                    <?= htmlspecialchars(getOfficierInitials($officier['nom'], $officier['prenom'])) ?>
+                                    <?= htmlspecialchars(obtenirInitialesOfficier($officier['nom'], $officier['prenom'])) ?>
                                 </div>
                             </td>
                             <td>

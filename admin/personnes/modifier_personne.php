@@ -25,7 +25,7 @@ try {
 
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = editPerson($pdo, $id_personne, $_POST, $_FILES);
+    $result = modifierPersonne($pdo, $id_personne, $_POST, $_FILES);
     if ($result['success']) {
         $success = $result['message'];
         // Recharger les données de la personne après modification

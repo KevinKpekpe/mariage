@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../header.php';
 
 // Vérifier si l'utilisateur est connecté
-if (!isLoggedIn()) {
+if (!estConnecte()) {
     header('Location: /../login.php');
     exit;
 }
@@ -16,8 +16,8 @@ if ($id_personne <= 0) {
     exit;
 }
 
-// Appel à getPersonne
-$person_result = getPersonne($pdo, $id_personne);
+// Appel à obtenirPersonne
+$person_result = obtenirPersonne($pdo, $id_personne);
 
 if (!$person_result['success']) {
     $error_message = $person_result['error'] ?? 'Erreur inconnue';
@@ -82,7 +82,7 @@ if ($personne && !empty($personne['date_naissance'])) {
             <?php else: ?>
                 <div class="photo-placeholder">
                     <div class="initials-circle">
-                        <?php echo getPersonInitials($personne['nom'], $personne['prenom']); ?>
+                        <?php echo obtenirInitialesPersonne($personne['nom'], $personne['prenom']); ?>
                     </div>
                 </div>
             <?php endif; ?>
@@ -106,7 +106,7 @@ if ($personne && !empty($personne['date_naissance'])) {
             <div class="info-header">
                 <h2>Informations Détaillées</h2>
                 <div class="status-badge active">
-                    Dernière mise à jour: <?php echo formatDate($personne['date_mise_a_jour'] ?? $personne['date_creation']); ?>
+                    Dernière mise à jour: <?php echo formaterDate($personne['date_mise_a_jour'] ?? $personne['date_creation']); ?>
                 </div>
             </div>
 
@@ -146,7 +146,7 @@ if ($personne && !empty($personne['date_naissance'])) {
                             <div class="info-item">
                                 <div class="info-label">Date de naissance</div>
                                 <div class="info-value <?php echo empty($personne['date_naissance']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($personne['date_naissance']) ? formatDate($personne['date_naissance']) : 'Non renseigné'; ?>
+                                    <?php echo !empty($personne['date_naissance']) ? formaterDate($personne['date_naissance']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
@@ -203,12 +203,12 @@ if ($personne && !empty($personne['date_naissance'])) {
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Date de création</div>
-                                <div class="info-value"><?php echo formatDate($personne['date_creation']); ?></div>
+                                <div class="info-value"><?php echo formaterDate($personne['date_creation']); ?></div>
                             </div>
                             <?php if (!empty($personne['date_mise_a_jour'])): ?>
                             <div class="info-item">
                                 <div class="info-label">Dernière modification</div>
-                                <div class="info-value"><?php echo formatDate($personne['date_mise_a_jour']); ?></div>
+                                <div class="info-value"><?php echo formaterDate($personne['date_mise_a_jour']); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>

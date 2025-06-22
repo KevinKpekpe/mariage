@@ -9,7 +9,7 @@ if (!$id_mariage) {
 }
 
 // Récupérer les données du mariage
-$result_mariage = getMariage($pdo, $id_mariage);
+$result_mariage = obtenirMariage($pdo, $id_mariage);
 if (!$result_mariage['success']) {
     header('Location: mariages.php?error=notfound');
     exit;
@@ -17,8 +17,8 @@ if (!$result_mariage['success']) {
 $mariage = $result_mariage['data'];
 
 // Récupérer les listes de personnes
-$hommes = getPersonsByType($pdo, 'homme');
-$femmes = getPersonsByType($pdo, 'femme');
+$hommes = obtenirPersonnesParType($pdo, 'homme');
+$femmes = obtenirPersonnesParType($pdo, 'femme');
 
 // Récupérer la commune de l'officier
 $commune_officier = '';
@@ -32,7 +32,7 @@ if ($result_commune) {
 // Traitement du formulaire de modification
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = editMariage($pdo, $id_mariage, $_POST, $_SESSION);
+    $result = modifierMariage($pdo, $id_mariage, $_POST, $_SESSION);
 
     if ($result['success']) {
         header('Location: mariages.php?success=edit');

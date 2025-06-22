@@ -4,14 +4,14 @@ require_once 'functions.php';
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 12;
-$offset = ($page - 1) * $limit;
+$limite = 12;
+$decalage = ($page - 1) * $limite;
 
 // Récupérer les mariages pour les annonces
-$result = getMariagesForAnnouncements($pdo, $limit, $offset);
-$mariages = $result['data'];
-$total_count = $result['total_count'];
-$total_pages = ceil($total_count / $limit);
+$resultat = obtenirMariagesPourAnnonces($pdo, $limite, $decalage);
+$mariages = $resultat['data'];
+$nombre_total = $resultat['total_count'];
+$pages_totales = ceil($nombre_total / $limite);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -60,7 +60,7 @@ $total_pages = ceil($total_count / $limit);
                 </form>
             </div>
 
-            <?php if ($result['success'] && !empty($mariages)): ?>
+            <?php if ($resultat['success'] && !empty($mariages)): ?>
                 <div class="announcements-grid">
                     <?php foreach ($mariages as $mariage): ?>
                         <div class="announcement-card">
@@ -80,11 +80,11 @@ $total_pages = ceil($total_count / $limit);
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="announcement-date"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                            <div class="announcement-date"><?php echo formaterDate($mariage['date_celebration']); ?></div>
                             <div class="announcement-details">
                                 <h3><?php echo htmlspecialchars($mariage['nom_epoux'] . ' & ' . $mariage['nom_epouse']); ?></h3>
                                 <p>Maison Communale de <?php echo htmlspecialchars($mariage['nom_commune']); ?></p>
-                                <p>Célébration prévue le <?php echo formatDate($mariage['date_celebration']); ?> à <?php echo htmlspecialchars($mariage['heure_celebration']); ?></p>
+                                <p>Célébration prévue le <?php echo formaterDate($mariage['date_celebration']); ?> à <?php echo htmlspecialchars($mariage['heure_celebration']); ?></p>
                                 <div class="objection-link">
                                     <a href="objection.php?id=<?php echo $mariage['id_mariage']; ?>">Faire une objection</a>
                                 </div>
@@ -94,19 +94,19 @@ $total_pages = ceil($total_count / $limit);
                 </div>
 
                 <!-- Pagination -->
-                <?php if ($total_pages > 1): ?>
+                <?php if ($pages_totales > 1): ?>
                     <div class="pagination">
                         <?php if ($page > 1): ?>
                             <a href="?page=<?php echo $page - 1; ?>" class="pagination-btn">Précédent</a>
                         <?php endif; ?>
 
-                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                        <?php for ($i = 1; $i <= $pages_totales; $i++): ?>
                             <a href="?page=<?php echo $i; ?>" class="pagination-btn <?php echo $i === $page ? 'active' : ''; ?>">
                                 <?php echo $i; ?>
                             </a>
                         <?php endfor; ?>
 
-                        <?php if ($page < $total_pages): ?>
+                        <?php if ($page < $pages_totales): ?>
                             <a href="?page=<?php echo $page + 1; ?>" class="pagination-btn">Suivant</a>
                         <?php endif; ?>
                     </div>

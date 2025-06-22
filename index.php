@@ -3,7 +3,7 @@ require_once 'db.php';
 require_once 'functions.php';
 
 // Récupérer les mariages récents pour la page d'accueil
-$recent_mariages = getRecentMariages($pdo, 3);
+$mariages_recents = obtenirMariagesRecents($pdo, 3);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -84,8 +84,8 @@ $recent_mariages = getRecentMariages($pdo, 3);
         <div class="container">
             <h2 class="section-title">Annonces Récentes</h2>
             <div class="announcements-grid">
-                <?php if ($recent_mariages['success'] && !empty($recent_mariages['data'])): ?>
-                    <?php foreach ($recent_mariages['data'] as $mariage): ?>
+                <?php if ($mariages_recents['success'] && !empty($mariages_recents['data'])): ?>
+                    <?php foreach ($mariages_recents['data'] as $mariage): ?>
                         <div class="announcement-card">
                             <div class="announcement-photos">
                                 <div class="photo-container">
@@ -103,11 +103,11 @@ $recent_mariages = getRecentMariages($pdo, 3);
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="announcement-date"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                            <div class="announcement-date"><?php echo formaterDate($mariage['date_celebration']); ?></div>
                             <div class="announcement-details">
                                 <h3><?php echo htmlspecialchars($mariage['nom_epoux'] . ' & ' . $mariage['nom_epouse']); ?></h3>
                                 <p>Maison Communale de <?php echo htmlspecialchars($mariage['nom_commune']); ?></p>
-                                <p>Célébration prévue le <?php echo formatDate($mariage['date_celebration']); ?> à <?php echo htmlspecialchars($mariage['heure_celebration']); ?></p>
+                                <p>Célébration prévue le <?php echo formaterDate($mariage['date_celebration']); ?> à <?php echo htmlspecialchars($mariage['heure_celebration']); ?></p>
                             </div>
                         </div>
                     <?php endforeach; ?>

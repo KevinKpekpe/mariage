@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../header.php';
 
 // Récupérer les listes de personnes (hommes et femmes)
-$hommes = getPersonsByType($pdo, 'homme');
-$femmes = getPersonsByType($pdo, 'femme');
+$hommes = obtenirPersonnesParType($pdo, 'homme');
+$femmes = obtenirPersonnesParType($pdo, 'femme');
 
 // Récupérer la commune de l'officier connecté
 $commune_officier = '';
@@ -21,7 +21,7 @@ $errors = [];
 $success_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = addMariage($pdo, $_POST, $_SESSION);
+    $result = ajouterMariage($pdo, $_POST, $_SESSION);
 
     if ($result['success']) {
         // Redirection pour éviter la resoumission du formulaire

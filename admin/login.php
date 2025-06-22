@@ -2,25 +2,25 @@
 require_once '../db.php';
 require_once '../functions.php';
 
-$errors = [];
-$success = '';
+$erreurs = [];
+$succes = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL);
-    $password = trim($_POST['password']);
+    $mot_de_passe = trim($_POST['password']);
     
-    $result = authenticateUser($pdo, $email, $password);
+    $resultat = authentifierUtilisateur($pdo, $email, $mot_de_passe);
     
-    if ($result['success']) {
+    if ($resultat['success']) {
         // Redirect based on role
-        if ($result['role'] === 'admin') {
+        if ($resultat['role'] === 'admin') {
             header('Location: /admin/index.php');
         } else {
             header('Location: /admin/index.php');
         }
         exit;
     } else {
-        $errors = $result['errors'];
+        $erreurs = $resultat['errors'];
     }
 }
 ?>
@@ -50,10 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h1 class="form-title">Connexion</h1>
                 </div>
 
-                <?php if (!empty($errors)): ?>
+                <?php if (!empty($erreurs)): ?>
                     <div class="error-message">
-                        <?php foreach ($errors as $error): ?>
-                            <p><?php echo htmlspecialchars($error); ?></p>
+                        <?php foreach ($erreurs as $erreur): ?>
+                            <p><?php echo htmlspecialchars($erreur); ?></p>
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>

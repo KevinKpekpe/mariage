@@ -25,7 +25,7 @@ if ($id_officier <= 0) {
     exit;
 }
 
-$officier_result = getOfficier($pdo, $id_officier);
+$officier_result = obtenirOfficier($pdo, $id_officier);
 
 if (!$officier_result['success']) {
     $_SESSION['error'] = $officier_result['error']; 
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $post_data = $_POST;
         $post_data['id_commune'] = $_POST['commune']; 
         
-        $result = editOfficier($pdo, $id_officier, $post_data);
+        $result = modifierOfficier($pdo, $id_officier, $post_data);
         
         if ($result['success']) {
             $_SESSION['success'] = $result['message'];
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$communes = getAllCommunes($pdo);
+$communes = obtenirToutesCommunes($pdo);
 ?>
         <div class="page-content">
             <div class="page-header">

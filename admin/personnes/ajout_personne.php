@@ -2,11 +2,11 @@
 require_once __DIR__ . '/../header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = addPerson($pdo, $_POST, $_FILES);
-    if ($result['success']) {
-        $success = $result['message'];
+    $resultat = ajouterPersonne($pdo, $_POST, $_FILES);
+    if ($resultat['success']) {
+        $succes = $resultat['message'];
     } else {
-        $errors = $result['errors'];
+        $erreurs = $resultat['errors'];
     }
 }
 ?>
@@ -34,16 +34,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p>Veuillez remplir tous les champs requis pour enregistrer une nouvelle personne dans le système.</p>
         </div>
 
-        <?php if (!empty($errors)): ?>
+        <?php if (!empty($erreurs)): ?>
             <div class="error-message">
-                <?php foreach ($errors as $error): ?>
-                    <p><?php echo htmlspecialchars($error); ?></p>
+                <?php foreach ($erreurs as $erreur): ?>
+                    <p><?php echo htmlspecialchars($erreur); ?></p>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
-        <?php if ($success): ?>
+        <?php if ($succes): ?>
             <div class="success-message">
-                <p><?php echo htmlspecialchars($success); ?></p>
+                <p><?php echo htmlspecialchars($succes); ?></p>
             </div>
         <?php endif; ?>
 

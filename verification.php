@@ -2,15 +2,15 @@
 require_once 'db.php';
 require_once 'functions.php';
 
-$search = $_GET['search'] ?? '';
-$search_results = [];
-$has_searched = false;
+$recherche = $_GET['search'] ?? '';
+$resultats_recherche = [];
+$recherche_effectuee = false;
 
-if (!empty($search)) {
-    $has_searched = true;
-    $result = searchPersonInMariages($pdo, $search);
-    if ($result['success']) {
-        $search_results = $result['data'];
+if (!empty($recherche)) {
+    $recherche_effectuee = true;
+    $resultat = rechercherPersonneDansMariages($pdo, $recherche);
+    if ($resultat['success']) {
+        $resultats_recherche = $resultat['data'];
     }
 }
 ?>
@@ -65,18 +65,18 @@ if (!empty($search)) {
                 <form action="verification.php" method="GET">
                     <div class="form-group">
                         <label for="search">Nom, prénom ou numéro d'identité:</label>
-                        <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($search); ?>">
+                        <input type="text" id="search" name="search" value="<?php echo htmlspecialchars($recherche); ?>">
                     </div>
                     <button type="submit">Rechercher</button>
                 </form>
             </div>
 
-            <?php if ($has_searched): ?>
+            <?php if ($recherche_effectuee): ?>
                 <div class="search-results">
-                    <?php if (!empty($search_results)): ?>
-                        <h3>Résultats de la recherche pour "<?php echo htmlspecialchars($search); ?>"</h3>
+                    <?php if (!empty($resultats_recherche)): ?>
+                        <h3>Résultats de la recherche pour "<?php echo htmlspecialchars($recherche); ?>"</h3>
                         <div class="announcements-grid">
-                            <?php foreach ($search_results as $mariage): ?>
+                            <?php foreach ($resultats_recherche as $mariage): ?>
                                 <div class="announcement-card">
                                     <div class="announcement-photos">
                                         <div class="photo-container">
@@ -94,7 +94,7 @@ if (!empty($search)) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                    <div class="announcement-date"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                                    <div class="announcement-date"><?php echo formaterDate($mariage['date_celebration']); ?></div>
                                     <div class="announcement-details">
                                         <h3><?php echo htmlspecialchars($mariage['nom_epoux'] . ' & ' . $mariage['nom_epouse']); ?></h3>
                                         <p><strong>Acte N°:</strong> <?php echo htmlspecialchars($mariage['numero_acte_mariage']); ?></p>

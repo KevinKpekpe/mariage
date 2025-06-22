@@ -1,17 +1,17 @@
 <?php
 session_start();
 
-function authenticateUser($pdo, $email, $password) {
-    $errors = [];
+function authentifierUtilisateur($pdo, $email, $mot_de_passe) {
+    $erreurs = [];
     
     if (empty($email)) {
-        $errors[] = "L'email est requis.";
+        $erreurs[] = "L'email est requis.";
     }
-    if (empty($password)) {
-        $errors[] = "Le mot de passe est requis.";
+    if (empty($mot_de_passe)) {
+        $erreurs[] = "Le mot de passe est requis.";
     }
 
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("
                 SELECT id_officier, email, mot_de_passe, nom, prenom, role, id_commune 
@@ -19,112 +19,114 @@ function authenticateUser($pdo, $email, $password) {
                 WHERE email = :email
             ");
             $stmt->execute(['email' => $email]);
-            $user = $stmt->fetch();
+            $utilisateur = $stmt->fetch();
 
-            if ($user && password_verify($password, $user['mot_de_passe'])) {
-                $_SESSION['user_id'] = $user['id_officier'];
-                $_SESSION['email'] = $user['email'];
-                $_SESSION['nom'] = $user['nom'];
-                $_SESSION['prenom'] = $user['prenom'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['id_commune'] = $user['id_commune'];
-                return ['success' => true, 'role' => $user['role']];
+            if ($utilisateur && password_verify($mot_de_passe, $utilisateur['mot_de_passe'])) {
+                $_SESSION['user_id'] = $utilisateur['id_officier'];
+                $_SESSION['email'] = $utilisateur['email'];
+                $_SESSION['nom'] = $utilisateur['nom'];
+                $_SESSION['prenom'] = $utilisateur['prenom'];
+                $_SESSION['role'] = $utilisateur['role'];
+                $_SESSION['id_commune'] = $utilisateur['id_commune'];
+                return ['success' => true, 'role' => $utilisateur['role']];
             } else {
-                $errors[] = "Email ou mot de passe incorrect.";
+                $erreurs[] = "Email ou mot de passe incorrect.";
             }
         } catch (PDOException $e) {
-            $errors[] = "Erreur de connexion: " . $e->getMessage();
+            $erreurs[] = "Erreur de connexion: " . $e->getMessage();
         }
     }
     
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
 
-function isLoggedIn() {
+function estConnecte() {
     return isset($_SESSION['user_id']);
 }
 
-function hasRole($role) {
-    return isLoggedIn() && $_SESSION['role'] === $role;
+function aRole($role) {
+    return estConnecte() && $_SESSION['role'] === $role;
 }
 
-function logout() {
+function deconnecter() {
     session_unset();
     session_destroy();
     header('Location: /admin/login.php');
     exit;
 }
-function uploadPhoto(array $file, string $subfolder = 'personnes', int $max_size = 2 * 1024 * 1024): string|false {
-    $allowed_types = ['image/jpeg', 'image/png'];
-    $root_dir = realpath(__DIR__) . DIRECTORY_SEPARATOR;
-    $upload_dir = $root_dir . 'uploads' . DIRECTORY_SEPARATOR . $subfolder . DIRECTORY_SEPARATOR;
+
+function telechargerPhoto(array $fichier, string $sous_dossier = 'personnes', int $taille_max = 2 * 1024 * 1024): string|false {
+    $types_autorises = ['image/jpeg', 'image/png'];
+    $dossier_racine = realpath(__DIR__) . DIRECTORY_SEPARATOR;
+    $dossier_upload = $dossier_racine . 'uploads' . DIRECTORY_SEPARATOR . $sous_dossier . DIRECTORY_SEPARATOR;
 
     // Vérifier fichier
-    if ($file['error'] !== UPLOAD_ERR_OK || !in_array($file['type'], $allowed_types) || $file['size'] > $max_size) {
+    if ($fichier['error'] !== UPLOAD_ERR_OK || !in_array($fichier['type'], $types_autorises) || $fichier['size'] > $taille_max) {
         return false;
     }
 
     // Créer dossier si besoin
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
+    if (!is_dir($dossier_upload)) {
+        mkdir($dossier_upload, 0755, true);
     }
 
-    $filename = uniqid() . '_' . basename($file['name']);
-    $destination = $upload_dir . $filename;
+    $nom_fichier = uniqid() . '_' . basename($fichier['name']);
+    $destination = $dossier_upload . $nom_fichier;
 
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+    if (!move_uploaded_file($fichier['tmp_name'], $destination)) {
         return false;
     }
 
     // Chemin relatif depuis la racine du projet
-    return 'uploads/' . $subfolder . '/' . $filename;
+    return 'uploads/' . $sous_dossier . '/' . $nom_fichier;
 }
-function addPerson($pdo, $post_data, $files, $upload_dir = 'uploads/') {
-    $errors = [];
-    $photo_path = null;
+
+function ajouterPersonne($pdo, $donnees_post, $fichiers, $dossier_upload = 'uploads/') {
+    $erreurs = [];
+    $chemin_photo = null;
 
     // Extraction & nettoyage de base
-    $nom = trim($post_data['nom'] ?? '');
-    $prenom = trim($post_data['prenom'] ?? '');
-    $type_personne = trim($post_data['type_personne'] ?? '');
-    $date_naissance = trim($post_data['date_naissance'] ?? '');
-    $lieu_naissance = trim($post_data['lieu_naissance'] ?? '');
-    $nationalite = trim($post_data['nationalite'] ?? '');
-    $profession = trim($post_data['profession'] ?? '');
-    $adresse_actuelle = trim($post_data['adresse_actuelle'] ?? '');
+    $nom = trim($donnees_post['nom'] ?? '');
+    $prenom = trim($donnees_post['prenom'] ?? '');
+    $type_personne = trim($donnees_post['type_personne'] ?? '');
+    $date_naissance = trim($donnees_post['date_naissance'] ?? '');
+    $lieu_naissance = trim($donnees_post['lieu_naissance'] ?? '');
+    $nationalite = trim($donnees_post['nationalite'] ?? '');
+    $profession = trim($donnees_post['profession'] ?? '');
+    $adresse_actuelle = trim($donnees_post['adresse_actuelle'] ?? '');
 
     // Validation
     if (empty($nom)) {
-        $errors[] = "Le nom est requis.";
+        $erreurs[] = "Le nom est requis.";
     }
 
     if (empty($prenom)) {
-        $errors[] = "Le prénom est requis.";
+        $erreurs[] = "Le prénom est requis.";
     }
 
     if (!in_array($type_personne, ['homme', 'femme'])) {
-        $errors[] = "Type de personne invalide.";
+        $erreurs[] = "Type de personne invalide.";
     }
 
     if (empty($nationalite)) {
-        $errors[] = "La nationalité est requise.";
+        $erreurs[] = "La nationalité est requise.";
     }
 
     if (!empty($date_naissance) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_naissance)) {
-        $errors[] = "Format de date de naissance invalide. (Attendu : AAAA-MM-JJ)";
+        $erreurs[] = "Format de date de naissance invalide. (Attendu : AAAA-MM-JJ)";
     }
 
     // Téléchargement de la photo
-    if (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $photo_path = uploadPhoto($files['photoInput'], 'personnes');
+    if (isset($fichiers['photoInput']) && $fichiers['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $chemin_photo = telechargerPhoto($fichiers['photoInput'], 'personnes');
 
-        if ($photo_path === false) {
-            $errors[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
+        if ($chemin_photo === false) {
+            $erreurs[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
         }
     }
 
     // Insertion en base si pas d'erreurs
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("
                 INSERT INTO personnes (
@@ -145,33 +147,33 @@ function addPerson($pdo, $post_data, $files, $upload_dir = 'uploads/') {
                 'nationalite' => $nationalite,
                 'profession' => $profession ?: null,
                 'adresse_actuelle' => $adresse_actuelle ?: null,
-                'photo' => $photo_path ?: null,
+                'photo' => $chemin_photo ?: null,
             ]);
 
             return [
                 'success' => true,
                 'message' => 'Personne ajoutée avec succès.',
-                'photo_path' => $photo_path
+                'photo_path' => $chemin_photo
             ];
         } catch (PDOException $e) {
-            $errors[] = "Erreur lors de l'enregistrement: " . $e->getMessage();
+            $erreurs[] = "Erreur lors de l'enregistrement: " . $e->getMessage();
         }
     }
 
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
 
-function editPerson($pdo, $id_personne, $post_data, $files) {
-    $errors = [];
-    $photo_path = null;
+function modifierPersonne($pdo, $id_personne, $donnees_post, $fichiers) {
+    $erreurs = [];
+    $chemin_photo = null;
 
     // Vérifier si la personne existe
     try {
         $stmt = $pdo->prepare("SELECT * FROM personnes WHERE id_personne = :id");
         $stmt->execute(['id' => $id_personne]);
-        $existing_person = $stmt->fetch();
+        $personne_existante = $stmt->fetch();
 
-        if (!$existing_person) {
+        if (!$personne_existante) {
             return ['success' => false, 'errors' => ['Personne non trouvée.']];
         }
     } catch (PDOException $e) {
@@ -179,56 +181,56 @@ function editPerson($pdo, $id_personne, $post_data, $files) {
     }
 
     // Nettoyage des inputs
-    $nom = trim($post_data['nom'] ?? '');
-    $prenom = trim($post_data['prenom'] ?? '');
-    $type_personne = trim($post_data['type_personne'] ?? '');
-    $date_naissance = trim($post_data['date_naissance'] ?? '');
-    $lieu_naissance = trim($post_data['lieu_naissance'] ?? '');
-    $nationalite = trim($post_data['nationalite'] ?? '');
-    $profession = trim($post_data['profession'] ?? '');
-    $adresse_actuelle = trim($post_data['adresse_actuelle'] ?? '');
-    $remove_photo = isset($post_data['remove_photo']) && $post_data['remove_photo'] === '1';
+    $nom = trim($donnees_post['nom'] ?? '');
+    $prenom = trim($donnees_post['prenom'] ?? '');
+    $type_personne = trim($donnees_post['type_personne'] ?? '');
+    $date_naissance = trim($donnees_post['date_naissance'] ?? '');
+    $lieu_naissance = trim($donnees_post['lieu_naissance'] ?? '');
+    $nationalite = trim($donnees_post['nationalite'] ?? '');
+    $profession = trim($donnees_post['profession'] ?? '');
+    $adresse_actuelle = trim($donnees_post['adresse_actuelle'] ?? '');
+    $supprimer_photo = isset($donnees_post['remove_photo']) && $donnees_post['remove_photo'] === '1';
 
     // Validation
     if (empty($nom)) {
-        $errors[] = "Le nom est requis.";
+        $erreurs[] = "Le nom est requis.";
     }
     if (empty($prenom)) {
-        $errors[] = "Le prénom est requis.";
+        $erreurs[] = "Le prénom est requis.";
     }
     if (!in_array($type_personne, ['homme', 'femme'])) {
-        $errors[] = "Type de personne invalide.";
+        $erreurs[] = "Type de personne invalide.";
     }
     if (empty($nationalite)) {
-        $errors[] = "La nationalité est requise.";
+        $erreurs[] = "La nationalité est requise.";
     }
     if (!empty($date_naissance) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date_naissance)) {
-        $errors[] = "Format de date de naissance invalide (attendu : AAAA-MM-JJ).";
+        $erreurs[] = "Format de date de naissance invalide (attendu : AAAA-MM-JJ).";
     }
 
     // Gestion de la photo
-    if ($remove_photo) {
-        if (!empty($existing_person['photo']) && file_exists($existing_person['photo'])) {
-            unlink($existing_person['photo']);
+    if ($supprimer_photo) {
+        if (!empty($personne_existante['photo']) && file_exists($personne_existante['photo'])) {
+            unlink($personne_existante['photo']);
         }
-        $photo_path = null;
-    } elseif (isset($files['photoInput']) && $files['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $photo_path = uploadPhoto($files['photoInput'], 'personnes');
+        $chemin_photo = null;
+    } elseif (isset($fichiers['photoInput']) && $fichiers['photoInput']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $chemin_photo = telechargerPhoto($fichiers['photoInput'], 'personnes');
 
-        if ($photo_path === false) {
-            $errors[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
+        if ($chemin_photo === false) {
+            $erreurs[] = "Erreur lors du téléchargement de la photo (format ou taille invalide, ou problème technique).";
         } else {
-            if (!empty($existing_person['photo']) && file_exists($existing_person['photo'])) {
-                unlink($existing_person['photo']);
+            if (!empty($personne_existante['photo']) && file_exists($personne_existante['photo'])) {
+                unlink($personne_existante['photo']);
             }
         }
     } else {
         // Garder l'ancienne photo
-        $photo_path = $existing_person['photo'];
+        $chemin_photo = $personne_existante['photo'];
     }
 
     // Mise à jour si pas d'erreurs
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("
                 UPDATE personnes SET
@@ -254,34 +256,34 @@ function editPerson($pdo, $id_personne, $post_data, $files) {
                 'nationalite' => $nationalite,
                 'profession' => $profession ?: null,
                 'adresse_actuelle' => $adresse_actuelle ?: null,
-                'photo' => $photo_path,
+                'photo' => $chemin_photo,
                 'id' => $id_personne
             ]);
 
-            return ['success' => true, 'message' => 'Personne modifiée avec succès.', 'photo_path' => $photo_path];
+            return ['success' => true, 'message' => 'Personne modifiée avec succès.', 'photo_path' => $chemin_photo];
         } catch (PDOException $e) {
-            $errors[] = "Erreur lors de la modification: " . $e->getMessage();
+            $erreurs[] = "Erreur lors de la modification: " . $e->getMessage();
         }
     }
 
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
 
-function getAllPersons($pdo, $search = '', $limit = 50, $offset = 0) {
+function obtenirToutesPersonnes($pdo, $recherche = '', $limite = 50, $decalage = 0) {
     try {
         // Construction de la requête avec filtres
-        $where_conditions = [];
-        $params = [];
+        $conditions_where = [];
+        $parametres = [];
         
         // Filtre de recherche (nom, prénom, profession)
-        if (!empty($search)) {
-            $where_conditions[] = "(nom LIKE :search OR prenom LIKE :search OR profession LIKE :search)";
-            $params['search'] = '%' . $search . '%';
+        if (!empty($recherche)) {
+            $conditions_where[] = "(nom LIKE :recherche OR prenom LIKE :recherche OR profession LIKE :recherche)";
+            $parametres['recherche'] = '%' . $recherche . '%';
         }
         
-        $where_clause = '';
-        if (!empty($where_conditions)) {
-            $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
+        $clause_where = '';
+        if (!empty($conditions_where)) {
+            $clause_where = 'WHERE ' . implode(' AND ', $conditions_where);
         }
         
         // Requête principale pour récupérer les personnes
@@ -300,39 +302,39 @@ function getAllPersons($pdo, $search = '', $limit = 50, $offset = 0) {
                 date_creation,
                 date_mise_a_jour
             FROM personnes 
-            {$where_clause}
+            {$clause_where}
             ORDER BY nom ASC, prenom ASC
-            LIMIT :limit OFFSET :offset
+            LIMIT :limite OFFSET :decalage
         ";
         
         $stmt = $pdo->prepare($sql);
         
         // Bind des paramètres
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(':' . $key, $value);
+        foreach ($parametres as $cle => $valeur) {
+            $stmt->bindValue(':' . $cle, $valeur);
         }
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+        $stmt->bindValue(':decalage', $decalage, PDO::PARAM_INT);
         
         $stmt->execute();
-        $persons = $stmt->fetchAll();
+        $personnes = $stmt->fetchAll();
         
         // Requête pour compter le total
-        $count_sql = "SELECT COUNT(*) as total FROM personnes {$where_clause}";
-        $count_stmt = $pdo->prepare($count_sql);
+        $sql_comptage = "SELECT COUNT(*) as total FROM personnes {$clause_where}";
+        $stmt_comptage = $pdo->prepare($sql_comptage);
         
-        foreach ($params as $key => $value) {
-            $count_stmt->bindValue(':' . $key, $value);
+        foreach ($parametres as $cle => $valeur) {
+            $stmt_comptage->bindValue(':' . $cle, $valeur);
         }
         
-        $count_stmt->execute();
-        $total_count = $count_stmt->fetch()['total'];
+        $stmt_comptage->execute();
+        $nombre_total = $stmt_comptage->fetch()['total'];
         
         return [
             'success' => true,
-            'data' => $persons,
-            'total_count' => $total_count,
-            'current_count' => count($persons)
+            'data' => $personnes,
+            'total_count' => $nombre_total,
+            'current_count' => count($personnes)
         ];
         
     } catch (PDOException $e) {
@@ -346,34 +348,33 @@ function getAllPersons($pdo, $search = '', $limit = 50, $offset = 0) {
     }
 }
 
-function getPersonPhoto($photo_path) {
-    if (!empty($photo_path)) {
-        return $photo_path;
+function obtenirPhotoPersonne($chemin_photo) {
+    if (!empty($chemin_photo)) {
+        return $chemin_photo;
     }
     return null;
 }
 
-function getPersonInitials($nom, $prenom) {
-    $nom_initial = !empty($nom) ? strtoupper(substr($nom, 0, 1)) : '';
-    $prenom_initial = !empty($prenom) ? strtoupper(substr($prenom, 0, 1)) : '';
-    return $nom_initial . $prenom_initial;
+function obtenirInitialesPersonne($nom, $prenom) {
+    $initial_nom = !empty($nom) ? strtoupper(substr($nom, 0, 1)) : '';
+    $initial_prenom = !empty($prenom) ? strtoupper(substr($prenom, 0, 1)) : '';
+    return $initial_nom . $initial_prenom;
 }
 
-function formatDate($date_string) {
-    if (empty($date_string)) {
+function formaterDate($chaine_date) {
+    if (empty($chaine_date)) {
         return '-';
     }
     
     try {
-        $date = new DateTime($date_string);
+        $date = new DateTime($chaine_date);
         return $date->format('d/m/Y');
     } catch (Exception $e) {
         return '-';
     }
 }
 
-
-function getPersonne($pdo, $id_personne) {
+function obtenirPersonne($pdo, $id_personne) {
     try {
         $stmt = $pdo->prepare("
             SELECT 
@@ -393,10 +394,10 @@ function getPersonne($pdo, $id_personne) {
             WHERE id_personne = :id
         ");
         $stmt->execute(['id' => $id_personne]);
-        $person = $stmt->fetch();
+        $personne = $stmt->fetch();
         
-        if ($person) {
-            return ['success' => true, 'data' => $person];
+        if ($personne) {
+            return ['success' => true, 'data' => $personne];
         } else {
             return ['success' => false, 'error' => 'Personne non trouvée.'];
         }
@@ -408,22 +409,23 @@ function getPersonne($pdo, $id_personne) {
         ];
     }
 }
-function deletePerson($pdo, $id_personne) {
-    $errors = [];
+
+function supprimerPersonne($pdo, $id_personne) {
+    $erreurs = [];
     
     // Vérifier si la personne existe
     try {
         $stmt = $pdo->prepare("SELECT * FROM personnes WHERE id_personne = :id");
         $stmt->execute(['id' => $id_personne]);
-        $person = $stmt->fetch();
+        $personne = $stmt->fetch();
         
-        if (!$person) {
+        if (!$personne) {
             return ['success' => false, 'errors' => ['Personne non trouvée.']];
         }
         
-        if (!empty($person['photo']) && file_exists($person['photo'])) {
-            if (!unlink($person['photo'])) {
-                $errors[] = "Impossible de supprimer le fichier photo, mais la personne sera supprimée.";
+        if (!empty($personne['photo']) && file_exists($personne['photo'])) {
+            if (!unlink($personne['photo'])) {
+                $erreurs[] = "Impossible de supprimer le fichier photo, mais la personne sera supprimée.";
             }
         }
         
@@ -434,7 +436,7 @@ function deletePerson($pdo, $id_personne) {
         return [
             'success' => true,
             'message' => 'Personne supprimée avec succès.',
-            'warnings' => $errors 
+            'warnings' => $erreurs 
         ];
         
     } catch (PDOException $e) {
@@ -445,7 +447,7 @@ function deletePerson($pdo, $id_personne) {
     }
 }
 
-function getAllCommunes($pdo) {
+function obtenirToutesCommunes($pdo) {
     try {
         $stmt = $pdo->query("SELECT id_commune, nom_commune FROM communes ORDER BY nom_commune ASC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -453,58 +455,59 @@ function getAllCommunes($pdo) {
         return [];
     }
 }
+
 // officiers 
-function addOfficier(PDO $pdo, array $post_data): array {
-    $errors = [];
+function ajouterOfficier(PDO $pdo, array $donnees_post): array {
+    $erreurs = [];
 
     // Extraction et nettoyage des données
-    $nom = trim($post_data['nom'] ?? ''); 
-    $prenom = trim($post_data['prenom'] ?? '');
-    $matricule = trim($post_data['matricule'] ?? '');
-    $email = trim($post_data['email'] ?? '');
-    $mot_de_passe = $post_data['mot_de_passe'] ?? '';
-    $id_commune = filter_var($post_data['id_commune'] ?? '', FILTER_VALIDATE_INT);
-    $role = trim($post_data['role'] ?? '');
+    $nom = trim($donnees_post['nom'] ?? ''); 
+    $prenom = trim($donnees_post['prenom'] ?? '');
+    $matricule = trim($donnees_post['matricule'] ?? '');
+    $email = trim($donnees_post['email'] ?? '');
+    $mot_de_passe = $donnees_post['mot_de_passe'] ?? '';
+    $id_commune = filter_var($donnees_post['id_commune'] ?? '', FILTER_VALIDATE_INT);
+    $role = trim($donnees_post['role'] ?? '');
 
     // Validation des champs requis
     if (empty($nom)) {
-        $errors[] = "Le nom est requis.";
+        $erreurs[] = "Le nom est requis.";
     }
     if (empty($prenom)) {
-        $errors[] = "Le prénom est requis.";
+        $erreurs[] = "Le prénom est requis.";
     }
     if (empty($email)) {
-        $errors[] = "L'email est requis.";
+        $erreurs[] = "L'email est requis.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "L'adresse email est invalide.";
+        $erreurs[] = "L'adresse email est invalide.";
     }
     if (empty($mot_de_passe)) {
-        $errors[] = "Le mot de passe est requis.";
+        $erreurs[] = "Le mot de passe est requis.";
     } elseif (strlen($mot_de_passe) < 6) { // Exemple de validation de longueur minimale
-        $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
+        $erreurs[] = "Le mot de passe doit contenir au moins 6 caractères.";
     }
     if ($id_commune === false || $id_commune <= 0) {
-        $errors[] = "L'ID de la commune est invalide.";
+        $erreurs[] = "L'ID de la commune est invalide.";
     }
     if (!in_array($role, ['admin', 'officier_communal'])) {
-        $errors[] = "Le rôle sélectionné est invalide.";
+        $erreurs[] = "Le rôle sélectionné est invalide.";
     }
 
     // Vérifier l'unicité de l'email
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM officiers WHERE email = :email");
             $stmt->execute(['email' => $email]);
             if ($stmt->fetchColumn() > 0) {
-                $errors[] = "Cet email est déjà utilisé.";
+                $erreurs[] = "Cet email est déjà utilisé.";
             }
         } catch (PDOException $e) {
-            $errors[] = "Erreur de base de données lors de la vérification de l'email: " . $e->getMessage();
+            $erreurs[] = "Erreur de base de données lors de la vérification de l'email: " . $e->getMessage();
         }
     }
 
     // Insertion en base si aucune erreur
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $hashed_password = password_hash($mot_de_passe, PASSWORD_DEFAULT);
 
@@ -529,67 +532,68 @@ function addOfficier(PDO $pdo, array $post_data): array {
             return ['success' => true, 'message' => 'Officier ajouté avec succès.'];
 
         } catch (PDOException $e) {
-            $errors[] = "Erreur lors de l'enregistrement de l'officier: " . $e->getMessage();
+            $erreurs[] = "Erreur lors de l'enregistrement de l'officier: " . $e->getMessage();
         }
     }
 
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
-function editOfficier(PDO $pdo, int $id_officier, array $post_data): array {
-    $errors = [];
+
+function modifierOfficier(PDO $pdo, int $id_officier, array $donnees_post): array {
+    $erreurs = [];
 
     // Vérifier si l'officier existe
     try {
         $stmt = $pdo->prepare("SELECT id_officier, email FROM officiers WHERE id_officier = :id");
         $stmt->execute(['id' => $id_officier]);
-        $existing_officer = $stmt->fetch();
+        $officier_existant = $stmt->fetch();
 
-        if (!$existing_officer) {
+        if (!$officier_existant) {
             return ['success' => false, 'errors' => ['Officier non trouvé.']];
         }
     } catch (PDOException $e) {
         return ['success' => false, 'errors' => ['Erreur de base de données lors de la récupération de l\'officier: ' . $e->getMessage()]];
     }
-    $nom = trim($post_data['nom'] ?? '');
-    $prenom = trim($post_data['prenom'] ?? '');
-    $matricule = trim($post_data['matricule'] ?? '');
-    $email = trim($post_data['email'] ?? '');
-    $mot_de_passe = $post_data['mot_de_passe'] ?? ''; // Peut être vide si non modifié
-    $id_commune = filter_var($post_data['id_commune'] ?? '', FILTER_VALIDATE_INT);
-    $role = trim($post_data['role'] ?? '');
+    $nom = trim($donnees_post['nom'] ?? '');
+    $prenom = trim($donnees_post['prenom'] ?? '');
+    $matricule = trim($donnees_post['matricule'] ?? '');
+    $email = trim($donnees_post['email'] ?? '');
+    $mot_de_passe = $donnees_post['mot_de_passe'] ?? ''; // Peut être vide si non modifié
+    $id_commune = filter_var($donnees_post['id_commune'] ?? '', FILTER_VALIDATE_INT);
+    $role = trim($donnees_post['role'] ?? '');
 
     // Validation des champs requis
     if (empty($nom)) {
-        $errors[] = "Le nom est requis.";
+        $erreurs[] = "Le nom est requis.";
     }
     if (empty($prenom)) {
-        $errors[] = "Le prénom est requis.";
+        $erreurs[] = "Le prénom est requis.";
     }
     if (empty($email)) {
-        $errors[] = "L'email est requis.";
+        $erreurs[] = "L'email est requis.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "L'adresse email est invalide.";
+        $erreurs[] = "L'adresse email est invalide.";
     }
     if ($id_commune === false || $id_commune <= 0) {
-        $errors[] = "L'ID de la commune est invalide.";
+        $erreurs[] = "L'ID de la commune est invalide.";
     }
     if (!in_array($role, ['admin', 'officier_communal'])) {
-        $errors[] = "Le rôle sélectionné est invalide.";
+        $erreurs[] = "Le rôle sélectionné est invalide.";
     }
 
     // Vérifier l'unicité de l'email (si l'email a changé)
-    if (empty($errors) && $email !== $existing_officer['email']) {
+    if (empty($erreurs) && $email !== $officier_existant['email']) {
         try {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM officiers WHERE email = :email AND id_officier != :id");
             $stmt->execute(['email' => $email, 'id' => $id_officier]);
             if ($stmt->fetchColumn() > 0) {
-                $errors[] = "Cet email est déjà utilisé par un autre officier.";
+                $erreurs[] = "Cet email est déjà utilisé par un autre officier.";
             }
         } catch (PDOException $e) {
-            $errors[] = "Erreur de base de données lors de la vérification de l'email: " . $e->getMessage();
+            $erreurs[] = "Erreur de base de données lors de la vérification de l'email: " . $e->getMessage();
         }
     }
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $sql = "
                 UPDATE officiers SET
@@ -602,7 +606,7 @@ function editOfficier(PDO $pdo, int $id_officier, array $post_data): array {
                     date_mise_a_jour = NOW()
                 WHERE id_officier = :id
             ";
-            $params = [
+            $parametres = [
                 'nom' => $nom,
                 'prenom' => $prenom,
                 'matricule' => $matricule ?: null,
@@ -615,9 +619,9 @@ function editOfficier(PDO $pdo, int $id_officier, array $post_data): array {
             // Si un nouveau mot de passe est fourni, le hacher et l'inclure dans la mise à jour
             if (!empty($mot_de_passe)) {
                 if (strlen($mot_de_passe) < 6) {
-                    $errors[] = "Le nouveau mot de passe doit contenir au moins 6 caractères.";
+                    $erreurs[] = "Le nouveau mot de passe doit contenir au moins 6 caractères.";
                 } else {
-                    $hashed_password = password_hash($mot_de_passe, PASSWORD_DEFAULT);
+                    $mot_de_passe_hache = password_hash($mot_de_passe, PASSWORD_DEFAULT);
                     $sql = "
                         UPDATE officiers SET
                             nom = :nom,
@@ -630,28 +634,29 @@ function editOfficier(PDO $pdo, int $id_officier, array $post_data): array {
                             date_mise_a_jour = NOW()
                         WHERE id_officier = :id
                     ";
-                    $params['mot_de_passe'] = $hashed_password;
+                    $parametres['mot_de_passe'] = $mot_de_passe_hache;
                 }
             }
             
             // Si des erreurs ont été ajoutées pour le mot de passe, retourner
-            if (!empty($errors)) {
-                return ['success' => false, 'errors' => $errors];
+            if (!empty($erreurs)) {
+                return ['success' => false, 'errors' => $erreurs];
             }
 
             $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
+            $stmt->execute($parametres);
 
             return ['success' => true, 'message' => 'Officier modifié avec succès.'];
 
         } catch (PDOException $e) {
-            $errors[] = "Erreur lors de la modification de l'officier: " . $e->getMessage();
+            $erreurs[] = "Erreur lors de la modification de l'officier: " . $e->getMessage();
         }
     }
 
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
-function getOfficier(PDO $pdo, int $id_officier): array {
+
+function obtenirOfficier(PDO $pdo, int $id_officier): array {
     try {
         $stmt = $pdo->prepare("
             SELECT 
@@ -687,20 +692,21 @@ function getOfficier(PDO $pdo, int $id_officier): array {
         ];
     }
 }
-function getAllOfficiers(PDO $pdo, string $search = '', int $limit = 50, int $offset = 0): array {
+
+function obtenirTousOfficiers(PDO $pdo, string $recherche = '', int $limite = 50, int $decalage = 0): array {
     try {
-        $where_conditions = [];
-        $params = [];
+        $conditions_where = [];
+        $parametres = [];
 
         // Filtre de recherche
-        if (!empty($search)) {
-            $where_conditions[] = "(o.nom LIKE :search OR o.prenom LIKE :search OR o.email LIKE :search OR o.matricule LIKE :search OR c.nom_commune LIKE :search)";
-            $params['search'] = '%' . $search . '%';
+        if (!empty($recherche)) {
+            $conditions_where[] = "(o.nom LIKE :recherche OR o.prenom LIKE :recherche OR o.email LIKE :recherche OR o.matricule LIKE :recherche OR c.nom_commune LIKE :recherche)";
+            $parametres['recherche'] = '%' . $recherche . '%';
         }
 
-        $where_clause = '';
-        if (!empty($where_conditions)) {
-            $where_clause = 'WHERE ' . implode(' AND ', $where_conditions);
+        $clause_where = '';
+        if (!empty($conditions_where)) {
+            $clause_where = 'WHERE ' . implode(' AND ', $conditions_where);
         }
         $sql = "
             SELECT
@@ -717,18 +723,18 @@ function getAllOfficiers(PDO $pdo, string $search = '', int $limit = 50, int $of
                 o.date_mise_a_jour
             FROM officiers o
             JOIN communes c ON o.id_commune = c.id_commune
-            {$where_clause}
+            {$clause_where}
             ORDER BY o.nom ASC, o.prenom ASC
-            LIMIT :limit OFFSET :offset
+            LIMIT :limite OFFSET :decalage
         ";
 
         $stmt = $pdo->prepare($sql);
 
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(':' . $key, $value);
+        foreach ($parametres as $cle => $valeur) {
+            $stmt->bindValue(':' . $cle, $valeur);
         }
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+        $stmt->bindValue(':decalage', $decalage, PDO::PARAM_INT);
 
         $stmt->execute();
         $officiers = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -738,12 +744,12 @@ function getAllOfficiers(PDO $pdo, string $search = '', int $limit = 50, int $of
             SELECT COUNT(o.id_officier) as total
             FROM officiers o
             JOIN communes c ON o.id_commune = c.id_commune
-            {$where_clause}
+            {$clause_where}
         ";
         $count_stmt = $pdo->prepare($count_sql);
 
-        foreach ($params as $key => $value) {
-            $count_stmt->bindValue(':' . $key, $value);
+        foreach ($parametres as $cle => $valeur) {
+            $count_stmt->bindValue(':' . $cle, $valeur);
         }
         $count_stmt->execute();
         $total_count = $count_stmt->fetch()['total'];
@@ -765,31 +771,24 @@ function getAllOfficiers(PDO $pdo, string $search = '', int $limit = 50, int $of
         ];
     }
 }
-function deleteOfficier(PDO $pdo, int $id_officier): array {
+
+function supprimerOfficier(PDO $pdo, int $id_officier): array {
     try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM officiers WHERE id_officier = :id");
+        // Vérifier si l'officier existe
+        $stmt = $pdo->prepare("SELECT id_officier FROM officiers WHERE id_officier = :id");
         $stmt->execute(['id' => $id_officier]);
-        if ($stmt->fetchColumn() === 0) {
+        
+        if (!$stmt->fetch()) {
             return ['success' => false, 'errors' => ['Officier non trouvé.']];
         }
+
+        // Supprimer l'officier
         $stmt = $pdo->prepare("DELETE FROM officiers WHERE id_officier = :id");
         $stmt->execute(['id' => $id_officier]);
 
-        if ($stmt->rowCount() > 0) {
-            return ['success' => true, 'message' => 'Officier supprimé avec succès.'];
-        } else {
-            return ['success' => false, 'errors' => ['Aucun officier supprimé (peut-être déjà inexistant).']];
-        }
+        return ['success' => true, 'message' => 'Officier supprimé avec succès.'];
 
     } catch (PDOException $e) {
-        
-        if ($e->getCode() === '23000') { 
-            return [
-                'success' => false,
-                'errors' => ['Impossible de supprimer cet officier car il est lié à d\'autres enregistrements (ex: mariages). Supprimez d\'abord les enregistrements liés.'],
-                'debug_message' => $e->getMessage()
-            ];
-        }
         return [
             'success' => false,
             'errors' => ['Erreur lors de la suppression de l\'officier: ' . $e->getMessage()]
@@ -797,50 +796,50 @@ function deleteOfficier(PDO $pdo, int $id_officier): array {
     }
 }
 
-function addMariage(PDO $pdo, array $post_data, array $session_data): array {
-    $errors = [];
+function ajouterMariage(PDO $pdo, array $donnees_post, array $donnees_session): array {
+    $erreurs = [];
 
     // Extraction et validation des données du formulaire
-    $numero_acte_mariage = trim($post_data['numero_acte_mariage'] ?? '');
-    $date_celebration = trim($post_data['date_celebration'] ?? '');
-    $heure_celebration = trim($post_data['heure_celebration'] ?? '');
-    $id_epoux = filter_var($post_data['id_epoux'] ?? '', FILTER_VALIDATE_INT);
-    $id_epouse = filter_var($post_data['id_epouse'] ?? '', FILTER_VALIDATE_INT);
-    $regime_matrimonial = trim($post_data['regime_matrimonial'] ?? '');
-    $nom_complet_temoin_1 = trim($post_data['nom_complet_temoin_1'] ?? '');
-    $nom_complet_temoin_2 = trim($post_data['nom_complet_temoin_2'] ?? '');
+    $numero_acte_mariage = trim($donnees_post['numero_acte_mariage'] ?? '');
+    $date_celebration = trim($donnees_post['date_celebration'] ?? '');
+    $heure_celebration = trim($donnees_post['heure_celebration'] ?? '');
+    $id_epoux = filter_var($donnees_post['id_epoux'] ?? '', FILTER_VALIDATE_INT);
+    $id_epouse = filter_var($donnees_post['id_epouse'] ?? '', FILTER_VALIDATE_INT);
+    $regime_matrimonial = trim($donnees_post['regime_matrimonial'] ?? '');
+    $nom_complet_temoin_1 = trim($donnees_post['nom_complet_temoin_1'] ?? '');
+    $nom_complet_temoin_2 = trim($donnees_post['nom_complet_temoin_2'] ?? '');
 
     // L'officier et la commune sont déterminés par l'utilisateur connecté
-    $id_officier_celebration = $session_data['user_id'] ?? null;
-    $id_commune_celebration = $session_data['id_commune'] ?? null;
+    $id_officier_celebration = $donnees_session['user_id'] ?? null;
+    $id_commune_celebration = $donnees_session['id_commune'] ?? null;
     
     // Validation
-    if (empty($numero_acte_mariage)) $errors[] = "Le numéro d'acte est requis.";
-    if (empty($date_celebration)) $errors[] = "La date de célébration est requise.";
-    if (empty($heure_celebration)) $errors[] = "L'heure de célébration est requise.";
-    if (!$id_epoux) $errors[] = "L'époux est invalide.";
-    if (!$id_epouse) $errors[] = "L'épouse est invalide.";
-    if ($id_epoux === $id_epouse) $errors[] = "L'époux et l'épouse ne peuvent pas être la même personne.";
-    if (empty($regime_matrimonial)) $errors[] = "Le régime matrimonial est requis.";
-    if (!$id_officier_celebration) $errors[] = "Impossible de récupérer l'officier de célébration (session invalide).";
-    if (!$id_commune_celebration) $errors[] = "Impossible de récupérer la commune de célébration (session invalide).";
-    if (empty($nom_complet_temoin_1)) $errors[] = "Le nom du témoin 1 est requis.";
-    if (empty($nom_complet_temoin_2)) $errors[] = "Le nom du témoin 2 est requis.";
+    if (empty($numero_acte_mariage)) $erreurs[] = "Le numéro d'acte est requis.";
+    if (empty($date_celebration)) $erreurs[] = "La date de célébration est requise.";
+    if (empty($heure_celebration)) $erreurs[] = "L'heure de célébration est requise.";
+    if (!$id_epoux) $erreurs[] = "L'époux est invalide.";
+    if (!$id_epouse) $erreurs[] = "L'épouse est invalide.";
+    if ($id_epoux === $id_epouse) $erreurs[] = "L'époux et l'épouse ne peuvent pas être la même personne.";
+    if (empty($regime_matrimonial)) $erreurs[] = "Le régime matrimonial est requis.";
+    if (!$id_officier_celebration) $erreurs[] = "Impossible de récupérer l'officier de célébration (session invalide).";
+    if (!$id_commune_celebration) $erreurs[] = "Impossible de récupérer la commune de célébration (session invalide).";
+    if (empty($nom_complet_temoin_1)) $erreurs[] = "Le nom du témoin 1 est requis.";
+    if (empty($nom_complet_temoin_2)) $erreurs[] = "Le nom du témoin 2 est requis.";
 
     // Vérifier l'unicité du numéro d'acte
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM mariages WHERE numero_acte_mariage = :num");
             $stmt->execute(['num' => $numero_acte_mariage]);
             if ($stmt->fetchColumn() > 0) {
-                $errors[] = "Ce numéro d'acte de mariage existe déjà.";
+                $erreurs[] = "Ce numéro d'acte de mariage existe déjà.";
             }
         } catch (PDOException $e) {
-            $errors[] = "Erreur de base de données : " . $e->getMessage();
+            $erreurs[] = "Erreur de base de données : " . $e->getMessage();
         }
     }
     
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         $pdo->beginTransaction();
         try {
             // Insérer dans la table `mariages`
@@ -886,52 +885,52 @@ function addMariage(PDO $pdo, array $post_data, array $session_data): array {
 
         } catch (PDOException $e) {
             $pdo->rollBack();
-            $errors[] = "Erreur lors de l'enregistrement du mariage: " . $e->getMessage();
+            $erreurs[] = "Erreur lors de l'enregistrement du mariage: " . $e->getMessage();
         }
     }
 
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
 
-function editMariage(PDO $pdo, int $id_mariage, array $post_data, array $session_data): array {
-    $errors = [];
+function modifierMariage(PDO $pdo, int $id_mariage, array $donnees_post, array $session_data): array {
+    $erreurs = [];
 
     // Extraction et validation
-    $numero_acte_mariage = trim($post_data['numero_acte_mariage'] ?? '');
-    $date_celebration = trim($post_data['date_celebration'] ?? '');
-    $heure_celebration = trim($post_data['heure_celebration'] ?? '');
-    $id_epoux = filter_var($post_data['id_epoux'] ?? '', FILTER_VALIDATE_INT);
-    $id_epouse = filter_var($post_data['id_epouse'] ?? '', FILTER_VALIDATE_INT);
-    $regime_matrimonial = trim($post_data['regime_matrimonial'] ?? '');
-    $nom_complet_temoin_1 = trim($post_data['nom_complet_temoin_1'] ?? '');
-    $nom_complet_temoin_2 = trim($post_data['nom_complet_temoin_2'] ?? '');
+    $numero_acte_mariage = trim($donnees_post['numero_acte_mariage'] ?? '');
+    $date_celebration = trim($donnees_post['date_celebration'] ?? '');
+    $heure_celebration = trim($donnees_post['heure_celebration'] ?? '');
+    $id_epoux = filter_var($donnees_post['id_epoux'] ?? '', FILTER_VALIDATE_INT);
+    $id_epouse = filter_var($donnees_post['id_epouse'] ?? '', FILTER_VALIDATE_INT);
+    $regime_matrimonial = trim($donnees_post['regime_matrimonial'] ?? '');
+    $nom_complet_temoin_1 = trim($donnees_post['nom_complet_temoin_1'] ?? '');
+    $nom_complet_temoin_2 = trim($donnees_post['nom_complet_temoin_2'] ?? '');
 
     $id_officier_celebration = $session_data['user_id'] ?? null;
     $id_commune_celebration = $session_data['id_commune'] ?? null;
 
-    if (empty($numero_acte_mariage)) $errors[] = "Le numéro d'acte est requis.";
-    if (empty($date_celebration)) $errors[] = "La date de célébration est requise.";
-    if (empty($heure_celebration)) $errors[] = "L'heure de célébration est requise.";
-    if (!$id_epoux) $errors[] = "L'époux est invalide.";
-    if (!$id_epouse) $errors[] = "L'épouse est invalide.";
-    if (empty($regime_matrimonial)) $errors[] = "Le régime matrimonial est requis.";
-    if (!$id_officier_celebration) $errors[] = "L'officier de célébration est invalide.";
-    if (!$id_commune_celebration) $errors[] = "La commune de célébration est invalide.";
+    if (empty($numero_acte_mariage)) $erreurs[] = "Le numéro d'acte est requis.";
+    if (empty($date_celebration)) $erreurs[] = "La date de célébration est requise.";
+    if (empty($heure_celebration)) $erreurs[] = "L'heure de célébration est requise.";
+    if (!$id_epoux) $erreurs[] = "L'époux est invalide.";
+    if (!$id_epouse) $erreurs[] = "L'épouse est invalide.";
+    if (empty($regime_matrimonial)) $erreurs[] = "Le régime matrimonial est requis.";
+    if (!$id_officier_celebration) $erreurs[] = "L'officier de célébration est invalide.";
+    if (!$id_commune_celebration) $erreurs[] = "La commune de célébration est invalide.";
 
     // Vérifier l'unicité du numéro d'acte (sauf pour le mariage actuel)
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         try {
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM mariages WHERE numero_acte_mariage = :num AND id_mariage != :id");
             $stmt->execute(['num' => $numero_acte_mariage, 'id' => $id_mariage]);
             if ($stmt->fetchColumn() > 0) {
-                $errors[] = "Ce numéro d'acte de mariage est déjà utilisé par un autre mariage.";
+                $erreurs[] = "Ce numéro d'acte de mariage est déjà utilisé par un autre mariage.";
             }
         } catch (PDOException $e) {
-            $errors[] = "Erreur de base de données : " . $e->getMessage();
+            $erreurs[] = "Erreur de base de données : " . $e->getMessage();
         }
     }
 
-    if (empty($errors)) {
+    if (empty($erreurs)) {
         $pdo->beginTransaction();
         try {
             // Mettre à jour la table `mariages`
@@ -975,25 +974,24 @@ function editMariage(PDO $pdo, int $id_mariage, array $post_data, array $session
 
         } catch (PDOException $e) {
             $pdo->rollBack();
-            $errors[] = "Erreur lors de la modification du mariage: " . $e->getMessage();
+            $erreurs[] = "Erreur lors de la modification du mariage: " . $e->getMessage();
         }
     }
 
-    return ['success' => false, 'errors' => $errors];
+    return ['success' => false, 'errors' => $erreurs];
 }
 
-function getAllMariages(PDO $pdo, string $search = '', int $limit = 50, int $offset = 0): array {
+function obtenirTousMariages(PDO $pdo, string $recherche = '', int $limite = 50, int $decalage = 0): array {
     try {
-        $params = [];
-        $where_clause = '';
+        $parametres = [];
+        $clause_where = '';
 
-        if (!empty($search)) {
-            $where_clause = "WHERE m.numero_acte_mariage LIKE :search 
-                            OR p_epoux.nom LIKE :search OR p_epoux.prenom LIKE :search
-                            OR p_epouse.nom LIKE :search OR p_epouse.prenom LIKE :search
-                            OR o.nom LIKE :search OR o.prenom LIKE :search
-                            OR c.nom_commune LIKE :search";
-            $params['search'] = '%' . $search . '%';
+        if (!empty($recherche)) {
+            $clause_where = "WHERE m.numero_acte_mariage LIKE :recherche 
+                            OR p_epoux.nom LIKE :recherche OR p_epoux.prenom LIKE :recherche
+                            OR p_epouse.nom LIKE :recherche OR p_epouse.prenom LIKE :recherche
+                            OR c.nom_commune LIKE :recherche";
+            $parametres['recherche'] = '%' . $recherche . '%';
         }
 
         $sql = "
@@ -1002,51 +1000,65 @@ function getAllMariages(PDO $pdo, string $search = '', int $limit = 50, int $off
                 m.numero_acte_mariage,
                 m.date_celebration,
                 m.heure_celebration,
-                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
-                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
-                CONCAT(o.prenom, ' ', o.nom) as nom_officier,
-                c.nom_commune
+                m.regime_matrimonial,
+                m.etat_acte,
+                m.date_creation,
+                m.date_mise_a_jour,
+                p_epoux.nom as nom_epoux,
+                p_epoux.prenom as prenom_epoux,
+                p_epoux.photo as photo_epoux,
+                p_epouse.nom as nom_epouse,
+                p_epouse.prenom as prenom_epouse,
+                p_epouse.photo as photo_epouse,
+                c.nom_commune,
+                o.nom as nom_officier,
+                o.prenom as prenom_officier
             FROM mariages m
             LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
             LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
             LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
             LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
-            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
             LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
-            {$where_clause}
-            ORDER BY m.date_celebration DESC
-            LIMIT :limit OFFSET :offset
+            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
+            {$clause_where}
+            ORDER BY m.date_celebration DESC, m.date_creation DESC
+            LIMIT :limite OFFSET :decalage
         ";
 
         $stmt = $pdo->prepare($sql);
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(':' . $key, $value);
+        
+        foreach ($parametres as $cle => $valeur) {
+            $stmt->bindValue(':' . $cle, $valeur);
         }
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+        $stmt->bindValue(':decalage', $decalage, PDO::PARAM_INT);
+        
         $stmt->execute();
         $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $count_sql = "SELECT COUNT(m.id_mariage) as total 
-                    FROM mariages m
-                    LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
-                    LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
-                    LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
-                    LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
-                    LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
-                    LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
-                    {$where_clause}";
-        $count_stmt = $pdo->prepare($count_sql);
-        foreach ($params as $key => $value) {
-            $count_stmt->bindValue(':' . $key, $value);
+        // Compter le total
+        $sql_comptage = "
+            SELECT COUNT(*) as total
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            {$clause_where}
+        ";
+        
+        $stmt_comptage = $pdo->prepare($sql_comptage);
+        foreach ($parametres as $cle => $valeur) {
+            $stmt_comptage->bindValue(':' . $cle, $valeur);
         }
-        $count_stmt->execute();
-        $total_count = $count_stmt->fetch()['total'];
+        $stmt_comptage->execute();
+        $nombre_total = $stmt_comptage->fetch()['total'];
 
         return [
             'success' => true,
             'data' => $mariages,
-            'total_count' => $total_count,
+            'total_count' => $nombre_total,
             'current_count' => count($mariages)
         ];
 
@@ -1054,25 +1066,27 @@ function getAllMariages(PDO $pdo, string $search = '', int $limit = 50, int $off
         return [
             'success' => false,
             'error' => 'Erreur lors de la récupération des mariages: ' . $e->getMessage(),
-            'data' => [], 'total_count' => 0, 'current_count' => 0
+            'data' => [],
+            'total_count' => 0,
+            'current_count' => 0
         ];
     }
 }
 
-function getMariage(PDO $pdo, int $id_mariage): array {
+function obtenirMariage(PDO $pdo, int $id_mariage): array {
     try {
-        $sql = "
+        $stmt = $pdo->prepare("
             SELECT 
                 m.*,
-                em_epoux.id_personne as id_epoux,
-                em_epouse.id_personne as id_epouse
+                c.nom_commune,
+                o.nom as nom_officier,
+                o.prenom as prenom_officier
             FROM mariages m
-            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
-            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
-            WHERE m.id_mariage = :id_mariage
-        ";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['id_mariage' => $id_mariage]);
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
+            WHERE m.id_mariage = :id
+        ");
+        $stmt->execute(['id' => $id_mariage]);
         $mariage = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($mariage) {
@@ -1080,30 +1094,47 @@ function getMariage(PDO $pdo, int $id_mariage): array {
         } else {
             return ['success' => false, 'error' => 'Mariage non trouvé.'];
         }
+
     } catch (PDOException $e) {
-        return ['success' => false, 'error' => 'Erreur de base de données: ' . $e->getMessage()];
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération du mariage: ' . $e->getMessage()
+        ];
     }
 }
 
-function deleteMariage(PDO $pdo, int $id_mariage): array {
+function supprimerMariage(PDO $pdo, int $id_mariage): array {
     try {
-        // La suppression en cascade est définie dans la BDD pour `epoux_mariage`
-        $stmt = $pdo->prepare("DELETE FROM mariages WHERE id_mariage = :id_mariage");
-        $stmt->execute(['id_mariage' => $id_mariage]);
+        $pdo->beginTransaction();
 
-        if ($stmt->rowCount() > 0) {
-            return ['success' => true, 'message' => 'Mariage supprimé avec succès.'];
-        } else {
-            return ['success' => false, 'errors' => ['Mariage non trouvé ou déjà supprimé.']];
-        }
+        // Supprimer les époux du mariage
+        $stmt = $pdo->prepare("DELETE FROM epoux_mariage WHERE id_mariage = :id");
+        $stmt->execute(['id' => $id_mariage]);
+
+        // Supprimer le mariage
+        $stmt = $pdo->prepare("DELETE FROM mariages WHERE id_mariage = :id");
+        $stmt->execute(['id' => $id_mariage]);
+
+        $pdo->commit();
+        return ['success' => true, 'message' => 'Mariage supprimé avec succès.'];
+
     } catch (PDOException $e) {
-        return ['success' => false, 'errors' => ['Erreur lors de la suppression: ' . $e->getMessage()]];
+        $pdo->rollBack();
+        return [
+            'success' => false,
+            'errors' => ['Erreur lors de la suppression du mariage: ' . $e->getMessage()]
+        ];
     }
 }
 
-function getPersonsByType(PDO $pdo, string $type): array {
+function obtenirPersonnesParType(PDO $pdo, string $type): array {
     try {
-        $stmt = $pdo->prepare("SELECT id_personne, CONCAT(prenom, ' ', nom) as nom_complet FROM personnes WHERE type_personne = :type ORDER BY nom_complet ASC");
+        $stmt = $pdo->prepare("
+            SELECT id_personne, nom, prenom, photo 
+            FROM personnes 
+            WHERE type_personne = :type 
+            ORDER BY nom ASC, prenom ASC
+        ");
         $stmt->execute(['type' => $type]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -1111,101 +1142,75 @@ function getPersonsByType(PDO $pdo, string $type): array {
     }
 }
 
-function getMariageDetails(PDO $pdo, int $id_mariage): array {
+function obtenirDetailsMariage(PDO $pdo, int $id_mariage): array {
     try {
-        $sql = "
+        // Récupérer les informations du mariage
+        $stmt = $pdo->prepare("
             SELECT 
                 m.*,
-                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_complet_epoux,
-                p_epoux.date_naissance as date_naissance_epoux,
-                p_epoux.lieu_naissance as lieu_naissance_epoux,
-                p_epoux.nationalite as nationalite_epoux,
-                p_epoux.profession as profession_epoux,
-                p_epoux.adresse_actuelle as adresse_epoux,
-                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_complet_epouse,
-                p_epouse.date_naissance as date_naissance_epouse,
-                p_epouse.lieu_naissance as lieu_naissance_epouse,
-                p_epouse.nationalite as nationalite_epouse,
-                p_epouse.profession as profession_epouse,
-                p_epouse.adresse_actuelle as adresse_epouse,
-                CONCAT(o.prenom, ' ', o.nom) as nom_complet_officier,
-                o.matricule as matricule_officier,
                 c.nom_commune,
                 c.district,
-                c.province
+                c.province,
+                o.nom as nom_officier,
+                o.prenom as prenom_officier,
+                o.matricule as matricule_officier
             FROM mariages m
-            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
-            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
-            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
-            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
-            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
             LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
-            WHERE m.id_mariage = :id_mariage
-        ";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['id_mariage' => $id_mariage]);
+            LEFT JOIN officiers o ON m.id_officier_celebration = o.id_officier
+            WHERE m.id_mariage = :id
+        ");
+        $stmt->execute(['id' => $id_mariage]);
         $mariage = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($mariage) {
-            return ['success' => true, 'data' => $mariage];
-        } else {
+        if (!$mariage) {
             return ['success' => false, 'error' => 'Mariage non trouvé.'];
         }
+
+        // Récupérer les époux
+        $stmt = $pdo->prepare("
+            SELECT 
+                p.*,
+                em.type_role
+            FROM epoux_mariage em
+            JOIN personnes p ON em.id_personne = p.id_personne
+            WHERE em.id_mariage = :id
+            ORDER BY em.type_role
+        ");
+        $stmt->execute(['id' => $id_mariage]);
+        $epoux = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'success' => true,
+            'data' => [
+                'mariage' => $mariage,
+                'epoux' => $epoux
+            ]
+        ];
+
     } catch (PDOException $e) {
-        return ['success' => false, 'error' => 'Erreur de base de données: ' . $e->getMessage()];
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération des détails: ' . $e->getMessage()
+        ];
     }
 }
 
-// Fonctions pour le frontend public
-function getRecentMariages(PDO $pdo, int $limit = 3): array {
+function obtenirMariagesRecents(PDO $pdo, int $limite = 3): array {
     try {
-        $sql = "
+        $stmt = $pdo->prepare("
             SELECT 
                 m.id_mariage,
                 m.numero_acte_mariage,
                 m.date_celebration,
                 m.heure_celebration,
-                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
-                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
-                c.nom_commune,
+                m.etat_acte,
+                p_epoux.nom as nom_epoux,
+                p_epoux.prenom as prenom_epoux,
                 p_epoux.photo as photo_epoux,
-                p_epouse.photo as photo_epouse
-            FROM mariages m
-            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
-            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
-            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
-            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
-            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
-            WHERE m.date_publication_annonce >= CURDATE()
-            ORDER BY m.date_publication_annonce ASC
-            LIMIT :limit
-        ";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        return ['success' => true, 'data' => $mariages];
-        
-    } catch (PDOException $e) {
-        return ['success' => false, 'error' => 'Erreur lors de la récupération des mariages récents: ' . $e->getMessage()];
-    }
-}
-
-function getMariagesForAnnouncements(PDO $pdo, int $limit = 20, int $offset = 0): array {
-    try {
-        $sql = "
-            SELECT 
-                m.id_mariage,
-                m.numero_acte_mariage,
-                m.date_celebration,
-                m.heure_celebration,
-                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
-                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
-                c.nom_commune,
-                p_epoux.photo as photo_epoux,
-                p_epouse.photo as photo_epouse
+                p_epouse.nom as nom_epouse,
+                p_epouse.prenom as prenom_epouse,
+                p_epouse.photo as photo_epouse,
+                c.nom_commune
             FROM mariages m
             LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
             LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
@@ -1214,67 +1219,118 @@ function getMariagesForAnnouncements(PDO $pdo, int $limit = 20, int $offset = 0)
             LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
             WHERE m.date_celebration >= CURDATE()
             ORDER BY m.date_celebration ASC
-            LIMIT :limit OFFSET :offset
-        ";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            LIMIT :limite
+        ");
+        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
         $stmt->execute();
         $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // Compter le total
-        $count_sql = "
-            SELECT COUNT(*) as total
-            FROM mariages m
-            WHERE m.date_celebration >= CURDATE()
-        ";
-        $count_stmt = $pdo->prepare($count_sql);
-        $count_stmt->execute();
-        $total_count = $count_stmt->fetch()['total'];
-        
-        return [
-            'success' => true, 
-            'data' => $mariages,
-            'total_count' => $total_count
-        ];
-        
+
+        return ['success' => true, 'data' => $mariages];
+
     } catch (PDOException $e) {
-        return ['success' => false, 'error' => 'Erreur lors de la récupération des annonces: ' . $e->getMessage()];
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération des mariages récents: ' . $e->getMessage(),
+            'data' => []
+        ];
     }
 }
 
-function searchPersonInMariages(PDO $pdo, string $search): array {
+function obtenirMariagesPourAnnonces(PDO $pdo, int $limite = 20, int $decalage = 0): array {
     try {
-        $sql = "
+        $stmt = $pdo->prepare("
             SELECT 
                 m.id_mariage,
                 m.numero_acte_mariage,
                 m.date_celebration,
                 m.heure_celebration,
-                CONCAT(p_epoux.prenom, ' ', p_epoux.nom) as nom_epoux,
-                CONCAT(p_epouse.prenom, ' ', p_epouse.nom) as nom_epouse,
-                c.nom_commune,
+                m.etat_acte,
+                p_epoux.nom as nom_epoux,
+                p_epoux.prenom as prenom_epoux,
                 p_epoux.photo as photo_epoux,
+                p_epouse.nom as nom_epouse,
+                p_epouse.prenom as prenom_epouse,
                 p_epouse.photo as photo_epouse,
-                m.etat_acte
+                c.nom_commune
             FROM mariages m
             LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
             LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
             LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
             LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
             LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
-            WHERE (p_epoux.nom LIKE :search OR p_epoux.prenom LIKE :search OR p_epouse.nom LIKE :search OR p_epouse.prenom LIKE :search)
-            ORDER BY m.date_celebration DESC
-        ";
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute(['search' => '%' . $search . '%']);
+            WHERE m.date_celebration >= CURDATE()
+            ORDER BY m.date_celebration ASC
+            LIMIT :limite OFFSET :decalage
+        ");
+        $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+        $stmt->bindValue(':decalage', $decalage, PDO::PARAM_INT);
+        $stmt->execute();
         $mariages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        return ['success' => true, 'data' => $mariages];
-        
+
+        // Compter le total
+        $stmt_comptage = $pdo->prepare("
+            SELECT COUNT(*) as total
+            FROM mariages m
+            WHERE m.date_celebration >= CURDATE()
+        ");
+        $stmt_comptage->execute();
+        $nombre_total = $stmt_comptage->fetch()['total'];
+
+        return [
+            'success' => true,
+            'data' => $mariages,
+            'total_count' => $nombre_total
+        ];
+
     } catch (PDOException $e) {
-        return ['success' => false, 'error' => 'Erreur lors de la recherche: ' . $e->getMessage()];
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la récupération des mariages: ' . $e->getMessage(),
+            'data' => [],
+            'total_count' => 0
+        ];
+    }
+}
+
+function rechercherPersonneDansMariages(PDO $pdo, string $recherche): array {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT
+                m.id_mariage,
+                m.numero_acte_mariage,
+                m.date_celebration,
+                m.heure_celebration,
+                m.etat_acte,
+                p_epoux.nom as nom_epoux,
+                p_epoux.prenom as prenom_epoux,
+                p_epoux.photo as photo_epoux,
+                p_epouse.nom as nom_epouse,
+                p_epouse.prenom as prenom_epouse,
+                p_epouse.photo as photo_epouse,
+                c.nom_commune
+            FROM mariages m
+            LEFT JOIN epoux_mariage em_epoux ON m.id_mariage = em_epoux.id_mariage AND em_epoux.type_role = 'époux'
+            LEFT JOIN personnes p_epoux ON em_epoux.id_personne = p_epoux.id_personne
+            LEFT JOIN epoux_mariage em_epouse ON m.id_mariage = em_epouse.id_mariage AND em_epouse.type_role = 'épouse'
+            LEFT JOIN personnes p_epouse ON em_epouse.id_personne = p_epouse.id_personne
+            LEFT JOIN communes c ON m.id_commune_celebration = c.id_commune
+            WHERE p_epoux.nom LIKE :recherche 
+               OR p_epoux.prenom LIKE :recherche
+               OR p_epouse.nom LIKE :recherche
+               OR p_epouse.prenom LIKE :recherche
+               OR m.numero_acte_mariage LIKE :recherche
+            ORDER BY m.date_celebration DESC
+        ");
+        $stmt->execute(['recherche' => '%' . $recherche . '%']);
+        $resultats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return ['success' => true, 'data' => $resultats];
+
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'error' => 'Erreur lors de la recherche: ' . $e->getMessage(),
+            'data' => []
+        ];
     }
 }

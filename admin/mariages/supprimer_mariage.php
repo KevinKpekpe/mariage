@@ -3,7 +3,7 @@ require_once __DIR__ . '/../../db.php';
 require_once __DIR__ . '/../../functions.php';
 
 // Check if user is logged in
-if (!isLoggedIn()) {
+if (!estConnecte()) {
     header('Location: /admin/login.php');
     exit;
 }
@@ -16,7 +16,7 @@ if (!$id_mariage) {
 }
 
 // Call delete function
-$result = deleteMariage($pdo, $id_mariage);
+$result = supprimerMariage($pdo, $id_mariage);
 
 if ($result['success']) {
     header('Location: mariages.php?success=delete');

@@ -2,14 +2,14 @@
 require_once __DIR__ . '/../header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = addOfficier($pdo, $_POST);
+    $result = ajouterOfficier($pdo, $_POST);
     if ($result['success']) {
         $success = $result['message'];
     } else {
         $errors = $result['errors'];
     }
 }
-$communes = getAllCommunes($pdo);
+$communes = obtenirToutesCommunes($pdo);
 ?>
 <!-- Page Content -->
 <div class="page-content">
@@ -120,7 +120,7 @@ $communes = getAllCommunes($pdo);
                                 <option value="">Toutes</option>
                                 <?php
 
-                                $communes = getAllCommunes($pdo);
+                                $communes = obtenirToutesCommunes($pdo);
                                 foreach ($communes as $commune) {
                                     $selected = (isset($_GET['commune_id']) && (int)$_GET['commune_id'] === (int)$commune['id_commune']) ? 'selected' : '';
                                     echo "<option value=\"{$commune['id_commune']}\" {$selected}>" . htmlspecialchars($commune['nom_commune']) . "</option>";

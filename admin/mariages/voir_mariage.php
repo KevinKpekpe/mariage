@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../header.php';
 
 // Vérifier si l'utilisateur est connecté
-if (!isLoggedIn()) {
+if (!estConnecte()) {
     header('Location: /../login.php');
     exit;
 }
@@ -15,8 +15,8 @@ if ($id_mariage <= 0) {
     exit;
 }
 
-// Appel à getMariageDetails
-$mariage_result = getMariageDetails($pdo, $id_mariage);
+// Appel à obtenirDetailsMariage
+$mariage_result = obtenirDetailsMariage($pdo, $id_mariage);
 
 if (!$mariage_result['success']) {
     $error_message = $mariage_result['error'] ?? 'Erreur inconnue';
@@ -88,7 +88,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
             <div class="person-id">N° <?php echo htmlspecialchars($mariage['numero_acte_mariage']); ?></div>
             <div class="person-type">
                 <span><i class="fas fa-calendar-alt"></i></span>
-                <?php echo formatDate($mariage['date_celebration']); ?>
+                <?php echo formaterDate($mariage['date_celebration']); ?>
             </div>
 
             <div style="margin-top: 20px;">
@@ -103,7 +103,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
             <div class="info-header">
                 <h2>Détails du Mariage</h2>
                 <div class="status-badge active">
-                    Dernière mise à jour: <?php echo formatDate($mariage['date_mise_a_jour'] ?? $mariage['date_creation']); ?>
+                    Dernière mise à jour: <?php echo formaterDate($mariage['date_mise_a_jour'] ?? $mariage['date_creation']); ?>
                 </div>
             </div>
 
@@ -122,7 +122,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Date de célébration</div>
-                                <div class="info-value"><?php echo formatDate($mariage['date_celebration']); ?></div>
+                                <div class="info-value"><?php echo formaterDate($mariage['date_celebration']); ?></div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Heure de célébration</div>
@@ -155,7 +155,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                             <div class="info-item">
                                 <div class="info-label">Date de naissance</div>
                                 <div class="info-value <?php echo empty($mariage['date_naissance_epoux']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($mariage['date_naissance_epoux']) ? formatDate($mariage['date_naissance_epoux']) : 'Non renseigné'; ?>
+                                    <?php echo !empty($mariage['date_naissance_epoux']) ? formaterDate($mariage['date_naissance_epoux']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
@@ -203,7 +203,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                             <div class="info-item">
                                 <div class="info-label">Date de naissance</div>
                                 <div class="info-value <?php echo empty($mariage['date_naissance_epouse']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($mariage['date_naissance_epouse']) ? formatDate($mariage['date_naissance_epouse']) : 'Non renseigné'; ?>
+                                    <?php echo !empty($mariage['date_naissance_epouse']) ? formaterDate($mariage['date_naissance_epouse']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
@@ -294,12 +294,12 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Date de création</div>
-                                <div class="info-value"><?php echo formatDate($mariage['date_creation']); ?></div>
+                                <div class="info-value"><?php echo formaterDate($mariage['date_creation']); ?></div>
                             </div>
                             <?php if (!empty($mariage['date_mise_a_jour'])): ?>
                             <div class="info-item">
                                 <div class="info-label">Dernière modification</div>
-                                <div class="info-value"><?php echo formatDate($mariage['date_mise_a_jour']); ?></div>
+                                <div class="info-value"><?php echo formaterDate($mariage['date_mise_a_jour']); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>

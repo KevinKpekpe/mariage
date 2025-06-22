@@ -8,7 +8,7 @@ $per_page = 5;
 $offset = ($page - 1) * $per_page;
 
 // Récupération des personnes
-$result = getAllPersons($pdo, $search, $per_page, $offset);
+$result = obtenirToutesPersonnes($pdo, $search, $per_page, $offset);
 $persons = $result['data'];
 $total_count = $result['total_count'];
 $total_pages = ceil($total_count / $per_page);
@@ -16,7 +16,7 @@ $total_pages = ceil($total_count / $per_page);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $id_to_delete = (int) $_POST['delete_id'];
-    $delete_result = deletePerson($pdo, $id_to_delete);
+    $delete_result = supprimerPersonne($pdo, $id_to_delete);
 
     if ($delete_result['success']) {
         header('Location: /admin/personnes/personnes.php');
@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
                         <tr>
                             <td>
                                 <?php
-                                $photo_path = getPersonPhoto($person['photo']);
+                                $photo_path = obtenirPhotoPersonne($person['photo']);
                                 if ($photo_path):
                                 ?>
                                     <div class="person-photo">
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
                                     </div>
                                 <?php else: ?>
                                     <div class="person-photo placeholder">
-                                        <?php echo getPersonInitials($person['nom'], $person['prenom']); ?>
+                                        <?php echo obtenirInitialesPersonne($person['nom'], $person['prenom']); ?>
                                     </div>
                                 <?php endif; ?>
                             </td>
@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
                                     <?php echo ucfirst($person['type_personne']); ?>
                                 </span>
                             </td>
-                            <td><?php echo formatDate($person['date_naissance']); ?></td>
+                            <td><?php echo formaterDate($person['date_naissance']); ?></td>
                             <td><?php echo htmlspecialchars($person['lieu_naissance'] ?: '-'); ?></td>
                             <td><?php echo htmlspecialchars($person['nationalite']); ?></td>
                             <td><?php echo htmlspecialchars($person['profession'] ?: '-'); ?></td>

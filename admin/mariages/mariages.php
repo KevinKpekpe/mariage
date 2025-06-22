@@ -7,7 +7,7 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 15;
 $offset = ($page - 1) * $limit;
 
-$result = getAllMariages($pdo, $search, $limit, $offset);
+$result = obtenirTousMariages($pdo, $search, $limit, $offset);
 
 $mariages = $result['data'];
 $total_count = $result['total_count'];
@@ -102,7 +102,7 @@ if (isset($_GET['success'])) {
                                 <?php foreach ($mariages as $mariage): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($mariage['numero_acte_mariage']); ?></td>
-                                        <td><?php echo htmlspecialchars(formatDate($mariage['date_celebration'])); ?></td>
+                                        <td><?php echo htmlspecialchars(formaterDate($mariage['date_celebration'])); ?></td>
                                         <td><?php echo htmlspecialchars($mariage['nom_epoux']); ?></td>
                                         <td><?php echo htmlspecialchars($mariage['nom_epouse']); ?></td>
                                         <td><?php echo htmlspecialchars($mariage['nom_officier']); ?></td>

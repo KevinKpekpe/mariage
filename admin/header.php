@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../functions.php';
 // Check if user is logged in
-if (!isLoggedIn()) {
+if (!estConnecte()) {
     header('Location: login.php');
     exit;
 }
@@ -13,10 +13,10 @@ $nom = $_SESSION['nom'];
 $role = $_SESSION['role'];
 
 // Determine user initials for avatar
-$user_initials = strtoupper(substr($prenom, 0, 1) . substr($nom, 0, 1));
+$initiales_utilisateur = strtoupper(substr($prenom, 0, 1) . substr($nom, 0, 1));
 
 // Determine role display text
-$role_display = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
+$texte_role = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -54,7 +54,7 @@ $role_display = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
             <span class="nav-icon"><i class="fas fa-users"></i></span>
             Personnes
         </a>
-        <?php if (hasRole('admin')): ?>
+        <?php if (aRole('admin')): ?>
             <a href="/admin/officiers/officiers.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF']) === 'officiers.php' ? 'active' : ''; ?>">
                 <span class="nav-icon"><i class="fas fa-user-tie"></i></span>
                 Officiers
@@ -76,8 +76,8 @@ $role_display = $role === 'admin' ? 'Administrateur' : 'Officier Civil';
                     <span class="search-icon"><i class="fas fa-search"></i></span>
                 </div>
                 <div class="user-profile">
-                    <div class="user-avatar"><?php echo htmlspecialchars($user_initials); ?></div>
-                    <span><?php echo htmlspecialchars($prenom . ' ' . $nom); ?> (<?php echo htmlspecialchars($role_display); ?>)</span>
+                    <div class="user-avatar"><?php echo htmlspecialchars($initiales_utilisateur); ?></div>
+                    <span><?php echo htmlspecialchars($prenom . ' ' . $nom); ?> (<?php echo htmlspecialchars($texte_role); ?>)</span>
                 </div>
                 <a href="/admin/logout.php" class="logout-button">
                     <i class="fas fa-sign-out-alt"></i>
