@@ -21,17 +21,29 @@ $mariage_result = obtenirDetailsMariage($pdo, $id_mariage);
 if (!$mariage_result['success']) {
     $error_message = $mariage_result['error'] ?? 'Erreur inconnue';
     $mariage = null;
+    $epoux = null;
+    $epouse = null;
 } else {
-    $mariage = $mariage_result['data'];
+    $data = $mariage_result['data'];
+    $mariage = $data['mariage'];
+    $epoux = null;
+    $epouse = null;
+    foreach ($data['epoux'] as $personne) {
+        if ($personne['type_role'] === 'époux') {
+            $epoux = $personne;
+        } elseif ($personne['type_role'] === 'épouse') {
+            $epouse = $personne;
+        }
+    }
 }
 
 // Calcul de l'âge des époux
 $age_epoux = null;
 $age_epouse = null;
 
-if ($mariage && !empty($mariage['date_naissance_epoux'])) {
+if ($epoux && !empty($epoux['date_naissance'])) {
     try {
-        $date_naissance = new DateTime($mariage['date_naissance_epoux']);
+        $date_naissance = new DateTime($epoux['date_naissance']);
         $aujourd_hui = new DateTime();
         $age_epoux = $aujourd_hui->diff($date_naissance)->y;
     } catch (Exception $e) {
@@ -39,9 +51,9 @@ if ($mariage && !empty($mariage['date_naissance_epoux'])) {
     }
 }
 
-if ($mariage && !empty($mariage['date_naissance_epouse'])) {
+if ($epouse && !empty($epouse['date_naissance'])) {
     try {
-        $date_naissance = new DateTime($mariage['date_naissance_epouse']);
+        $date_naissance = new DateTime($epouse['date_naissance']);
         $aujourd_hui = new DateTime();
         $age_epouse = $aujourd_hui->diff($date_naissance)->y;
     } catch (Exception $e) {
@@ -144,7 +156,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Nom complet</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['nom_complet_epoux']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($epoux ? ($epoux['nom'] . ' ' . $epoux['prenom']) : 'Non renseigné'); ?></div>
                             </div>
                             <?php if ($age_epoux !== null): ?>
                             <div class="info-item">
@@ -154,30 +166,30 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                             <?php endif; ?>
                             <div class="info-item">
                                 <div class="info-label">Date de naissance</div>
-                                <div class="info-value <?php echo empty($mariage['date_naissance_epoux']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($mariage['date_naissance_epoux']) ? formaterDate($mariage['date_naissance_epoux']) : 'Non renseigné'; ?>
+                                <div class="info-value <?php echo ($epoux && empty($epoux['date_naissance'])) ? 'empty' : ''; ?>">
+                                    <?php echo ($epoux && !empty($epoux['date_naissance'])) ? formaterDate($epoux['date_naissance']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Lieu de naissance</div>
-                                <div class="info-value <?php echo empty($mariage['lieu_naissance_epoux']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($mariage['lieu_naissance_epoux']) ? htmlspecialchars($mariage['lieu_naissance_epoux']) : 'Non renseigné'; ?>
+                                <div class="info-value <?php echo ($epoux && empty($epoux['lieu_naissance'])) ? 'empty' : ''; ?>">
+                                    <?php echo ($epoux && !empty($epoux['lieu_naissance'])) ? htmlspecialchars($epoux['lieu_naissance']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Nationalité</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['nationalite_epoux']); ?></div>
+                                <div class="info-value"><?php echo ($epoux && !empty($epoux['nationalite'])) ? htmlspecialchars($epoux['nationalite']) : 'Non renseigné'; ?></div>
                             </div>
-                            <?php if (!empty($mariage['profession_epoux'])): ?>
+                            <?php if ($epoux && !empty($epoux['profession'])): ?>
                             <div class="info-item">
                                 <div class="info-label">Profession</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['profession_epoux']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($epoux['profession']); ?></div>
                             </div>
                             <?php endif; ?>
-                            <?php if (!empty($mariage['adresse_epoux'])): ?>
+                            <?php if ($epoux && !empty($epoux['adresse_actuelle'])): ?>
                             <div class="info-item">
                                 <div class="info-label">Adresse</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['adresse_epoux']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($epoux['adresse_actuelle']); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -192,7 +204,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Nom complet</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['nom_complet_epouse']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($epouse ? ($epouse['nom'] . ' ' . $epouse['prenom']) : 'Non renseigné'); ?></div>
                             </div>
                             <?php if ($age_epouse !== null): ?>
                             <div class="info-item">
@@ -202,30 +214,30 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                             <?php endif; ?>
                             <div class="info-item">
                                 <div class="info-label">Date de naissance</div>
-                                <div class="info-value <?php echo empty($mariage['date_naissance_epouse']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($mariage['date_naissance_epouse']) ? formaterDate($mariage['date_naissance_epouse']) : 'Non renseigné'; ?>
+                                <div class="info-value <?php echo ($epouse && empty($epouse['date_naissance'])) ? 'empty' : ''; ?>">
+                                    <?php echo ($epouse && !empty($epouse['date_naissance'])) ? formaterDate($epouse['date_naissance']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Lieu de naissance</div>
-                                <div class="info-value <?php echo empty($mariage['lieu_naissance_epouse']) ? 'empty' : ''; ?>">
-                                    <?php echo !empty($mariage['lieu_naissance_epouse']) ? htmlspecialchars($mariage['lieu_naissance_epouse']) : 'Non renseigné'; ?>
+                                <div class="info-value <?php echo ($epouse && empty($epouse['lieu_naissance'])) ? 'empty' : ''; ?>">
+                                    <?php echo ($epouse && !empty($epouse['lieu_naissance'])) ? htmlspecialchars($epouse['lieu_naissance']) : 'Non renseigné'; ?>
                                 </div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Nationalité</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['nationalite_epouse']); ?></div>
+                                <div class="info-value"><?php echo ($epouse && !empty($epouse['nationalite'])) ? htmlspecialchars($epouse['nationalite']) : 'Non renseigné'; ?></div>
                             </div>
-                            <?php if (!empty($mariage['profession_epouse'])): ?>
+                            <?php if ($epouse && !empty($epouse['profession'])): ?>
                             <div class="info-item">
                                 <div class="info-label">Profession</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['profession_epouse']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($epouse['profession']); ?></div>
                             </div>
                             <?php endif; ?>
-                            <?php if (!empty($mariage['adresse_epouse'])): ?>
+                            <?php if ($epouse && !empty($epouse['adresse_actuelle'])): ?>
                             <div class="info-item">
                                 <div class="info-label">Adresse</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['adresse_epouse']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($epouse['adresse_actuelle']); ?></div>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -240,7 +252,7 @@ if ($mariage && !empty($mariage['date_naissance_epouse'])) {
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Officier de célébration</div>
-                                <div class="info-value"><?php echo htmlspecialchars($mariage['nom_complet_officier']); ?></div>
+                                <div class="info-value"><?php echo htmlspecialchars($mariage['nom_officier'] . ' ' . $mariage['prenom_officier']); ?></div>
                             </div>
                             <?php if (!empty($mariage['matricule_officier'])): ?>
                             <div class="info-item">
